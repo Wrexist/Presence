@@ -19,6 +19,9 @@ import { attachWebSocket } from "./websocket/index.js";
 const logger = pino({ level: config.LOG_LEVEL });
 
 const app = express();
+// Honor X-Forwarded-For when deployed behind a proxy. Off by default
+// (TRUST_PROXY=0); Railway/Render/Fly users should set TRUST_PROXY=1.
+app.set("trust proxy", config.TRUST_PROXY);
 app.use(express.json({ limit: "64kb" }));
 app.use(
   cors({
@@ -39,10 +42,31 @@ app.use((req, res) => {
 });
 
 // Error handler — last middleware. Must have 4 params for Express to recognize it.
+// Preserves the status code set by earlier middleware (notably body-parser,
+// which throws 400 on malformed JSON and 413 on payload-too-large). Only
+// masks the message for true 5xx faults.
+interface HttpError extends Error {
+  status?: number;
+  statusCode?: number;
+  type?: string;
+  expose?: boolean;
+}
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  req.log.error({ err }, "unhandled error");
-  res.status(500).json({ error: "internal_error" });
+app.use((err: HttpError, req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status ?? err.statusCode ?? 500;
+  if (status >= 500) {
+    req.log.error({ err }, "unhandled error");
+    res.status(status).json({ error: "internal_error" });
+    return;
+  }
+  req.log.warn(
+    { msg: err.message, type: err.type, status },
+    "client error"
+  );
+  res.status(status).json({
+    error: err.type ?? "bad_request",
+    message: err.message
+  });
 });
 
 const http = createServer(app);

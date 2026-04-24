@@ -63,6 +63,12 @@ create table if not exists public.connections (
 
 create index if not exists connections_user_a_idx on public.connections(user_a, connected_at desc);
 create index if not exists connections_user_b_idx on public.connections(user_b, connected_at desc);
+-- Canonical pair uniqueness: prevents both (A,B) and (B,A) from existing,
+-- so retries or race conditions on mutual-wave recording can't inflate the
+-- connection count. `least()` and `greatest()` are immutable over uuid, so
+-- this expression is valid in a unique index.
+create unique index if not exists connections_pair_uniq_idx
+  on public.connections (least(user_a, user_b), greatest(user_a, user_b));
 
 -- ─── Blocks ───────────────────────────────────────────────────────────────────
 

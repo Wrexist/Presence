@@ -49,6 +49,7 @@ curl -s -X POST http://localhost:3000/api/icebreaker \
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side key — bypasses RLS. **Never ship to iOS.** | DB writes   |
 | `ANTHROPIC_API_KEY`         | Anthropic API key                                    | Real icebreakers |
 | `CORS_ORIGINS`              | Comma-separated allowlist for dev                    | —              |
+| `TRUST_PROXY`               | Proxy hop count (0=off, 1 for Railway/Render/Fly)    | Prod honesty   |
 
 If `ANTHROPIC_API_KEY` is missing, `/api/icebreaker` returns a deterministic fallback from a hand-written library — useful for offline dev.
 

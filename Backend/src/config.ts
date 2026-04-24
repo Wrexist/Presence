@@ -22,6 +22,21 @@ const schema = z.object({
     .transform((s) =>
       s.split(",").map((o) => o.trim()).filter((o) => o.length > 0)
     ),
+
+  // Express `trust proxy` setting. Set to the number of proxy hops in front
+  // of the app (Railway/Render/Fly typically = 1). `true` trusts everything;
+  // `false` / `0` trusts nothing (the default, safe for local dev).
+  // When false, req.ip returns the direct socket peer — do not use it for
+  // per-user throttling behind a proxy.
+  TRUST_PROXY: z
+    .string()
+    .default("0")
+    .transform((s) => {
+      if (s === "true") return true;
+      if (s === "false") return false;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : false;
+    })
 });
 
 const parsed = schema.safeParse(process.env);

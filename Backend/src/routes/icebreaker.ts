@@ -14,10 +14,20 @@ const lastCallAt = new Map<string, number>();
 const RATE_LIMIT_MS = 30_000;
 
 icebreakerRouter.post("/", async (req: Request, res: Response) => {
-  // Sender identity: we don't have auth yet, so use a header + IP fallback.
-  // Replace with the authenticated user id once Supabase Auth lands.
-  const senderId =
-    (req.header("x-sender-id") ?? req.ip ?? "anonymous").slice(0, 64);
+  // Sender identity — required. We don't have auth yet, so the client
+  // must pass a stable id via x-sender-id. Falling back to req.ip collides
+  // across users behind a reverse proxy or NAT (all requests see the same
+  // IP) and would rate-limit unrelated users together. Replace with the
+  // authenticated user id once Supabase Auth lands.
+  const header = req.header("x-sender-id");
+  if (!header || header.length === 0 || header.length > 64) {
+    res.status(400).json({
+      error: "missing_sender_id",
+      message: "x-sender-id header is required (1-64 chars)"
+    });
+    return;
+  }
+  const senderId = header;
 
   const now = Date.now();
   const last = lastCallAt.get(senderId) ?? 0;
