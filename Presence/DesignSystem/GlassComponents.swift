@@ -216,19 +216,3 @@ private extension View {
     .preferredColorScheme(.dark)
 }
 
-#Preview("Reduce Transparency") {
-    ZStack {
-        LinearGradient(
-            colors: [PresenceColors.deepNight, PresenceColors.softMidnight],
-            startPoint: .top, endPoint: .bottom
-        ).ignoresSafeArea()
-        VStack(spacing: 20) {
-            GlassCard { Text("Reduced transparency").font(Typography.headline) }
-            GlassPillButton(title: "Go Present") {}
-        }
-        .padding()
-        .foregroundStyle(PresenceColors.presenceWhite)
-    }
-    .environment(\.accessibilityReduceTransparency, true)
-    .preferredColorScheme(.dark)
-}
