@@ -1,65 +1,42 @@
 //  PresenceApp
 //  HomeView.swift
 //  Created: 2026-04-24
-//  Purpose: The main "who's nearby" screen. Stylized map canvas with
-//           glowing presence dots and floating Luma overlays, a venue
-//           header at the top, and the primary "Go Present" CTA anchored
-//           to the bottom. A real MapKit Map{} replaces the canvas in
-//           Sprint 1 once LocationService lands.
+//  Purpose: The "who's nearby" tab. Real SwiftUI MapKit map underneath,
+//           glowing presence dots + floating Lumas as annotations, and the
+//           Go Present CTA anchored at the bottom. Camera defaults to San
+//           Francisco when no location fix is available; shows the user's
+//           own dot when CoreLocation has a current fix.
 
+import MapKit
 import SwiftUI
 
 struct HomeView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(ServiceContainer.self) private var services
 
-    // Stub data for UI bring-up. Replace with MapViewModel in Sprint 1.
+    @State private var cameraPosition: MapCameraPosition = .region(Self.defaultRegion)
+
+    // Preview data — stays static until Sprint 1 wires the backend.
     private let venueName = "San Francisco"
     private let nearbyCount = 8
     private let previewDots: [PreviewDot] = [
-        .init(x: 0.22, y: 0.20, color: PresenceColors.auroraPink),
-        .init(x: 0.70, y: 0.18, color: PresenceColors.auroraViolet),
-        .init(x: 0.85, y: 0.38, color: PresenceColors.auroraBlue),
-        .init(x: 0.30, y: 0.45, color: PresenceColors.auroraAmber),
-        .init(x: 0.58, y: 0.55, color: PresenceColors.auroraViolet),
-        .init(x: 0.18, y: 0.68, color: PresenceColors.auroraPink),
-        .init(x: 0.80, y: 0.72, color: PresenceColors.auroraBlue)
+        .init(lat: 37.7755, lng: -122.4220, color: PresenceColors.auroraPink),
+        .init(lat: 37.7788, lng: -122.4200, color: PresenceColors.auroraViolet),
+        .init(lat: 37.7730, lng: -122.4150, color: PresenceColors.auroraBlue),
+        .init(lat: 37.7770, lng: -122.4165, color: PresenceColors.auroraAmber),
+        .init(lat: 37.7760, lng: -122.4245, color: PresenceColors.auroraViolet),
+        .init(lat: 37.7712, lng: -122.4210, color: PresenceColors.auroraPink),
+        .init(lat: 37.7742, lng: -122.4125, color: PresenceColors.auroraBlue)
+    ]
+    private let lumaAnnotations: [LumaAnnotation] = [
+        .init(lat: 37.7773, lng: -122.4185, state: .idle, size: 44),
+        .init(lat: 37.7742, lng: -122.4188, state: .excited, size: 40)
     ]
 
     var body: some View {
         ZStack {
-            MapCanvas()
+            map
                 .ignoresSafeArea()
-
-            GeometryReader { proxy in
-                ZStack {
-                    ForEach(previewDots) { dot in
-                        PresenceDotView(color: dot.color)
-                            .position(
-                                x: proxy.size.width * dot.x,
-                                y: proxy.size.height * dot.y
-                            )
-                    }
-
-                    // A couple of floating Lumas scattered on the map, per the mockups.
-                    LumaView(state: .idle, size: 44)
-                        .position(
-                            x: proxy.size.width * 0.42,
-                            y: proxy.size.height * 0.32
-                        )
-                    LumaView(state: .excited, size: 40)
-                        .position(
-                            x: proxy.size.width * 0.66,
-                            y: proxy.size.height * 0.62
-                        )
-
-                    // Self dot at center.
-                    PresenceDotView(color: PresenceColors.selfGlow, size: 26, isSelf: true)
-                        .position(
-                            x: proxy.size.width * 0.5,
-                            y: proxy.size.height * 0.5
-                        )
-                }
-            }
 
             VStack {
                 header
@@ -70,6 +47,43 @@ struct HomeView: View {
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
+    }
+
+    // MARK: - Map
+
+    private var map: some View {
+        Map(position: $cameraPosition) {
+            // User's own dot — only when CoreLocation has a fix.
+            if let userCoord = services.location.currentLocation?.coordinate {
+                Annotation("You", coordinate: userCoord) {
+                    PresenceDotView(color: PresenceColors.selfGlow, size: 26, isSelf: true)
+                }
+                .annotationTitles(.hidden)
+            }
+
+            // Nearby presences.
+            ForEach(previewDots) { dot in
+                Annotation("", coordinate: dot.coordinate) {
+                    PresenceDotView(color: dot.color)
+                }
+                .annotationTitles(.hidden)
+            }
+
+            // Floating Lumas scattered on the map (Design_2 aesthetic).
+            ForEach(lumaAnnotations) { luma in
+                Annotation("", coordinate: luma.coordinate) {
+                    LumaView(state: luma.state, size: luma.size)
+                }
+                .annotationTitles(.hidden)
+            }
+        }
+        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        .mapControlVisibility(.visible)
+        .mapControls {
+            MapCompass()
+            MapUserLocationButton()
+        }
+        .tint(PresenceColors.auroraBlue)
     }
 
     // MARK: - Header
@@ -105,61 +119,37 @@ struct HomeView: View {
             .shadow(color: PresenceColors.auroraBlue.opacity(0.5), radius: 22, y: 6)
         }
     }
+
+    // MARK: - Constants
+
+    private static let defaultRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+        span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+    )
 }
 
-// MARK: - Supporting types
+// MARK: - Supporting annotation types
 
 private struct PreviewDot: Identifiable {
     let id = UUID()
-    let x: CGFloat
-    let y: CGFloat
+    let lat: Double
+    let lng: Double
     let color: Color
+
+    var coordinate: CLLocationCoordinate2D {
+        .init(latitude: lat, longitude: lng)
+    }
 }
 
-/// Placeholder map canvas until MapKit is wired in Sprint 1.
-/// Intentionally muted so dots and Lumas pop above it.
-private struct MapCanvas: View {
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    PresenceColors.deepNight,
-                    PresenceColors.softMidnight
-                ],
-                startPoint: .top, endPoint: .bottom
-            )
+private struct LumaAnnotation: Identifiable {
+    let id = UUID()
+    let lat: Double
+    let lng: Double
+    let state: LumaState
+    let size: CGFloat
 
-            // Faint grid suggesting streets.
-            GeometryReader { proxy in
-                Path { path in
-                    let step: CGFloat = 48
-                    var x: CGFloat = 0
-                    while x < proxy.size.width {
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: proxy.size.height))
-                        x += step
-                    }
-                    var y: CGFloat = 0
-                    while y < proxy.size.height {
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: proxy.size.width, y: y))
-                        y += step
-                    }
-                }
-                .stroke(PresenceColors.presenceWhite.opacity(0.05), lineWidth: 0.5)
-            }
-
-            // A soft purple wash to mimic the lavender map tint in Design_2.
-            RadialGradient(
-                colors: [
-                    PresenceColors.auroraViolet.opacity(0.18),
-                    Color.clear
-                ],
-                center: .center,
-                startRadius: 40,
-                endRadius: 360
-            )
-        }
+    var coordinate: CLLocationCoordinate2D {
+        .init(latitude: lat, longitude: lng)
     }
 }
 

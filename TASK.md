@@ -65,14 +65,14 @@
 ## 📋 BACKLOG (Ordered by Priority)
 
 ### Sprint 1 — Core Loop
-- [ ] TASK-004: MapView with MapKit + Liquid Glass overlays
-- [ ] TASK-005: LocationService (CoreLocation wrapper)
+- [ ] TASK-004: MapView with MapKit + Liquid Glass overlays (partial — real `Map{}` + annotations done; Liquid Glass on controls inherits from system)
+- [x] TASK-005: LocationService (CoreLocation wrapper) — `Services/LocationService.swift`
 - [ ] TASK-006: PresenceService (toggle on/off, 3h expiry)
 - [ ] TASK-007: Supabase PostGIS integration (store/query presences)
 - [ ] TASK-008: WebSocket service (real-time dot updates on map)
-- [ ] TASK-009: PresenceDotView (glowing marker on map)
-- [ ] TASK-010: "Go Present" button (main CTA, glass pill)
-- [ ] TASK-011: Luma component + idle animation (Lottie)
+- [x] TASK-009: PresenceDotView (glowing marker on map)
+- [x] TASK-010: "Go Present" button (main CTA, glass pill)
+- [ ] TASK-011: Luma component + idle animation (Lottie — currently pure SwiftUI)
 
 ### Sprint 2 — Wave System
 - [ ] TASK-012: Tap-a-dot → wave preview sheet
@@ -111,6 +111,21 @@
 
 ## 🔖 SESSION NOTES
 
+**Last session (2026-04-24, MapKit + LocationService):** Stacked on top of onboarding-flow. Real SwiftUI `Map{}` replaces the stylized canvas, and the first-tap location-permission flow is now wired end-to-end.
+
+- `Services/LocationService.swift` — `@MainActor @Observable` NSObject wrapping `CLLocationManager`. `requestWhenInUseAuthorization()` is async (bridges the delegate callback via `CheckedContinuation`). `privacyReducedLocation()` jitters the coord by ~±50m with longitude scaled by `cos(lat)` so the radius stays roughly constant. Delegate uses `@preconcurrency` to keep Swift 6 strict concurrency happy. Rejects fixes with accuracy > 200m or staler than 15s.
+- `Features/Map/HomeView.swift` — rewritten to use real `Map(position:)` with `Annotation` overlays for preview presence dots, floating Lumas (scattered on the map, per Design_2), and the user's own dot (only rendered when CoreLocation has a fix). `MapCompass` + `MapUserLocationButton` controls, POIs excluded, flat elevation. Camera defaults to a San-Francisco region; panning is free.
+- `Features/Map/GoPresentView.swift` — first Go Present tap calls `services.location.requestWhenInUseAuthorization()`. Authorized: starts updates, flips to glowing state. Denied/restricted: surfaces an alert with an "Open Settings" deep link. Added a "Stop glowing" toggle on subsequent taps that calls `stopUpdating()`.
+- `App/ServiceContainer.swift` — now holds `LocationService`. `.live()` and `.preview()` both instantiate a real service (permission prompts are inert in previews).
+
+**Privacy model checkpoint:** the system `CLLocationManager` prompt fires ONLY on first Go Present tap, not during onboarding. Matches CLAUDE.md § Privacy Rules ("Location ONLY when Present") and the LEARNINGS note that explanation-before-ask yields ~40% better grant rates.
+
+**Scope deferred for follow-up slices:**
+- `PresenceService` that activates via the backend and schedules the 3h expiry (TODO marker already in `handleGoPresent`)
+- `BackendClient` for HTTP calls
+- `SocketService` + realtime dot updates
+- Sprint 1 backend routes (`/api/presence`) which currently return 501
+
 **Last session (2026-04-24, onboarding):** Built the full seven-step onboarding flow in pure SwiftUI. Windows-buildable, CI-verified on commit.
 
 - New SwiftUI screens under `Features/Onboarding/`: `OnboardingView` (root with progress capsules), `OnboardingWelcomeView` (Luma hero + staggered text fade-in + "You're not alone in feeling alone."), `OnboardingPhoneView`, `OnboardingOTPView` (auto-submits on 6 digits, "Change number" link), `OnboardingUsernameView` (lowercase lock, 3–24 char regex validation), `OnboardingBioView` (live 0/3-word counter), `OnboardingPrivacyView` (three glass privacy rows + shielded Luma), `OnboardingReadyView` (celebrating Luma → hands off to map)
@@ -132,7 +147,7 @@
 
 Also fixed doc debt: CLAUDE.md's Glass hierarchy used to list `.glassEffect(.thin)` — that's not a real iOS 26 API. Updated the hierarchy to show `.regular` + `.clear` only, added a warning note, and cross-linked a LEARNINGS.md entry explaining the CI error pattern.
 
-**Next session start with:** with onboarding shipped, the front-end shell is feature-complete for a demo. Next up is Sprint 1 for real — `LocationService` (CoreLocation actor), `PresenceService` (activate/deactivate, 3h expiry), and swapping `HomeView`'s `MapCanvas` placeholder for a real `Map{}`. That's the first thing that actually requires a simulator or device to properly test, so it's a good fit for a Mac-access session. In parallel, someone (you) should create the Supabase project + apply `Backend/supabase/migrations/0001_initial_schema.sql` and a RevenueCat iOS app so the env vars aren't empty by then.
+**Next session start with:** with LocationService + real MapKit in, the next cohesive Sprint 1 slice is the backend wiring — a `BackendClient` (URLSession) + `PresenceService` that hits `/api/presence` for activate/nearby/deactivate. Then swap `HomeView`'s preview-dots array for a real query. That slice depends on (a) the Sprint 1 backend routes being implemented (currently 501) and ideally (b) a Supabase project existing so the backend can actually persist.
 
 ---
 
