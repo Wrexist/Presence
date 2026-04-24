@@ -107,9 +107,20 @@
 
 ## 🔖 SESSION NOTES
 
-**Last session (2026-04-24):** Pivoted to XcodeGen so the project is fully developable from Windows (mirrors the Peptide-ai layout). Restructured repo: source moved into `Presence/{App,DesignSystem,...}`, `Backend/` skeleton, `Shared/`, `PresenceTests/`, `PresenceUITests/` created. Wrote `project.yml` (iOS 26, Swift 6, all SPM deps), `.swiftlint.yml`, `.gitignore` (excludes `*.xcodeproj`), `.env.example`, `SETUP.md`, `TESTFLIGHT_SETUP.md`, and `.github/workflows/pr-checks.yml` (macOS runner: xcodegen → swiftlint → build → unit tests). App shell scaffolded: `PresenceApp.swift` (env-injected coordinator + service container), `AppCoordinator.swift` (`@Observable` route enum), `ServiceContainer.swift` (DI shell), `Presence.entitlements`, `Assets.xcassets` with aurora-blue AccentColor. Updated `CLAUDE.md` file structure section + added Windows-development note.
+**Last session (2026-04-24):** Scaffolded the Node.js backend (`Backend/`) — the first piece of the system that runs natively on Windows.
 
-**Next session start with:** Push branch → wait for `pr-checks.yml` to go green on the macOS runner. If it fails, read the xcresult artifact and fix. Once green, start Sprint 1: build `LocationService` + `PresenceService` + `MapView` (TASK-004 → TASK-010). Also handle the dashboard chores (Supabase project + SQL migrations, RevenueCat account).
+- `src/index.ts` — Express + Socket.io entry, pino logging, graceful shutdown
+- `src/config.ts` — Zod-validated env with `featureFlags` for Supabase / Anthropic
+- `src/services/matchingService.ts` — Claude icebreaker generation via `@anthropic-ai/sdk`, using `claude-opus-4-7` with `thinking: disabled`, no sampling params (Opus 4.7 removed them), prompt-cache marker on the system prompt (no-op at current length, future-proofs), response validation (20–200 chars, AI-mention filter), and a hand-written fallback library keyed deterministically by venue name
+- `src/services/supabase.ts` — server-side client factory using the service-role key
+- `src/routes/{health,icebreaker,presence,waves}.ts` — icebreaker endpoint is live + rate-limited (1 req / 30s per sender); presence/waves stubs return 501 with a sprint pointer
+- `src/websocket/index.ts` — socket.io scaffold, geohash rooms land in Sprint 1
+- `supabase/migrations/0001_initial_schema.sql` — full PostGIS schema from CLAUDE.md (users, presences, waves, connections, blocks, venue_partners) with GIST index, 3h expiry check, RLS with placeholder deny-all-anon policies
+- `README.md` — how to run, how to verify, env table, curl example
+
+Also fixed doc debt: CLAUDE.md's Glass hierarchy used to list `.glassEffect(.thin)` — that's not a real iOS 26 API. Updated the hierarchy to show `.regular` + `.clear` only, added a warning note, and cross-linked a LEARNINGS.md entry explaining the CI error pattern.
+
+**Next session start with:** pick a direction — (a) onboarding flow UI (phone → OTP → bio → map, pure SwiftUI, builds on Windows), (b) wire Supabase Auth + presence persistence end-to-end (Sprint 1 core loop, requires a Supabase project), or (c) harden the Backend (unit tests, fallback library expansion, deploy to Railway). The backend is now runnable locally — `cd Backend && npm install && npm run dev`, hit `/health`, then POST to `/api/icebreaker` with or without an `ANTHROPIC_API_KEY`.
 
 ---
 
