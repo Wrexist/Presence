@@ -11,28 +11,44 @@
 
 ## ✅ COMPLETED TASKS
 
-*None yet — project just initialized*
+### [TASK-001] Project Setup
+- [x] **XcodeGen-driven project structure** mirroring Peptide-ai (`project.yml` is the source of truth, `.xcodeproj` is gitignored — fully Windows-friendly)
+- [x] Repo restructured to `Presence/{App,DesignSystem,Features,Models,Services,Data,Resources}` + `Shared/`, `PresenceTests/`, `PresenceUITests/`, `Backend/`
+- [x] iOS 26 deployment target, Swift 6.0 strict concurrency, all SPM deps declared (Lottie, RevenueCat, Supabase, SocketIO)
+- [x] `Presence/App/PresenceApp.swift` — `@main` entry with environment wiring
+- [x] `Presence/App/AppCoordinator.swift` — `@Observable` route state
+- [x] `Presence/App/ServiceContainer.swift` — DI container scaffold (live/preview)
+- [x] `Presence/Presence.entitlements` (push only — minimal)
+- [x] `Presence/Resources/Assets.xcassets` (AppIcon stub + AccentColor = aurora blue)
+- [x] `Info.plist` properties defined in `project.yml` (location + push usage strings)
+- [x] `.swiftlint.yml`, `.gitignore`, `.env.example`
+- [x] `.github/workflows/pr-checks.yml` — macOS CI: xcodegen → swiftlint → build → unit tests
+- [x] `SETUP.md` — bootstrap guide including Windows-only workflow
+- [x] `TESTFLIGHT_SETUP.md` — guide for activating signed deploys later
+- [x] Supabase + RevenueCat *dashboards* still need to be created manually (browser tasks)
+
+### [TASK-002] Design System — Liquid Glass Foundation (code-only portion)
+- [x] GlassTokens enum complete (`Presence/DesignSystem/GlassTokens.swift`)
+- [x] GlassCard component
+- [x] GlassPillButton component
+- [x] GlassIconButton component
+- [x] GlassBottomSheet component
+- [x] GlassChip component (bonus — needed for countdowns/status)
+- [x] Fallback Material components for iOS < 26 (centralized in `glassSurface(in:thin:)`)
+- [x] Preview all components in light + dark mode + Reduce Transparency
+- [x] PresenceColors.swift — aurora palette + `Color(hex:)` + deterministic `dotColor(for:)`
+- [x] Typography.swift — SF Pro Rounded scale
 
 ---
 
 ## 🔨 IN PROGRESS
 
-### [TASK-001] Project Setup
-- [ ] Xcode 26 project created with iOS 26 target
-- [ ] SwiftUI app shell with AppCoordinator
-- [ ] Supabase project created and configured
-- [ ] RevenueCat dashboard setup
-- [ ] GlassTokens.swift design system file
-- [ ] Color palette defined in PresenceColors.swift
-
-### [TASK-002] Design System — Liquid Glass Foundation
-- [ ] GlassTokens enum complete
-- [ ] GlassCard component (used for venue overlays)
-- [ ] GlassPillButton component (used for CTAs)
-- [ ] GlassIconButton component (used for map controls)
-- [ ] GlassBottomSheet component (used for wave sheet)
-- [ ] Fallback Material components for iOS < 26
-- [ ] Preview all components in light + dark mode
+### Operational chores (browser/dashboard work — not code)
+- [ ] Create Supabase project, copy URL + anon key into local `.env.development`
+- [ ] Run the SQL migrations from `CLAUDE.md` § "Database Schema" in Supabase SQL editor
+- [ ] Create RevenueCat account + iOS app, copy SDK key into `.env.development`
+- [ ] Push branch and confirm `pr-checks.yml` goes green on macOS runner
+- [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
 ### [TASK-003] Auth Flow
 - [ ] Supabase phone auth integration
@@ -91,8 +107,9 @@
 
 ## 🔖 SESSION NOTES
 
-**Last session:** —  
-**Next session start with:** TASK-001 project setup
+**Last session (2026-04-24):** Pivoted to XcodeGen so the project is fully developable from Windows (mirrors the Peptide-ai layout). Restructured repo: source moved into `Presence/{App,DesignSystem,...}`, `Backend/` skeleton, `Shared/`, `PresenceTests/`, `PresenceUITests/` created. Wrote `project.yml` (iOS 26, Swift 6, all SPM deps), `.swiftlint.yml`, `.gitignore` (excludes `*.xcodeproj`), `.env.example`, `SETUP.md`, `TESTFLIGHT_SETUP.md`, and `.github/workflows/pr-checks.yml` (macOS runner: xcodegen → swiftlint → build → unit tests). App shell scaffolded: `PresenceApp.swift` (env-injected coordinator + service container), `AppCoordinator.swift` (`@Observable` route enum), `ServiceContainer.swift` (DI shell), `Presence.entitlements`, `Assets.xcassets` with aurora-blue AccentColor. Updated `CLAUDE.md` file structure section + added Windows-development note.
+
+**Next session start with:** Push branch → wait for `pr-checks.yml` to go green on the macOS runner. If it fails, read the xcresult artifact and fix. Once green, start Sprint 1: build `LocationService` + `PresenceService` + `MapView` (TASK-004 → TASK-010). Also handle the dashboard chores (Supabase project + SQL migrations, RevenueCat account).
 
 ---
 

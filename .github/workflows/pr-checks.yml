@@ -1,0 +1,97 @@
+name: PR checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & lint
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.app/Contents/Developer
+      XCODE_PROJECT: Presence.xcodeproj
+      SCHEME: Presence
+      DESTINATION: "platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/xcodegen
+            /usr/local/Cellar/swiftlint
+          key: brew-${{ runner.os }}-xcodegen-swiftlint-v1
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          which xcodegen >/dev/null 2>&1 || brew install xcodegen
+          which swiftlint >/dev/null 2>&1 || brew install swiftlint
+          xcodegen --version
+          swiftlint --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: deriveddata-${{ runner.os }}-${{ hashFiles('project.yml', 'Presence/**/*.swift') }}
+          restore-keys: |
+            deriveddata-${{ runner.os }}-
+
+      - name: SwiftLint
+        run: swiftlint --strict --reporter github-actions-logging
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | xcpretty || xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -scheme "$SCHEME" \
+              -destination "$DESTINATION" \
+              -configuration Debug \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              build
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$XCODE_PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -only-testing:PresenceTests \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload xcresult on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult-${{ github.run_id }}
+          path: ~/Library/Developer/Xcode/DerivedData/**/Logs/Test/*.xcresult
+          retention-days: 7
