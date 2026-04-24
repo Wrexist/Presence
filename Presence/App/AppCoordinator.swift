@@ -1,7 +1,8 @@
 //  PresenceApp
 //  AppCoordinator.swift
 //  Created: 2026-04-24
-//  Purpose: Root navigation state. Owns the top-level route and any modal stack.
+//  Purpose: Root navigation state. Owns the top-level route, the current
+//           tab, and any presented modal. Views read/write via @Environment.
 
 import SwiftUI
 
@@ -10,16 +11,28 @@ import SwiftUI
 final class AppCoordinator {
     enum Route: Equatable {
         case onboarding
-        case map
+        case main
     }
 
-    var route: Route = .onboarding
+    enum Modal: Equatable, Identifiable {
+        case goPresent
+        case wave(IncomingWave)
 
-    func completeOnboarding() {
-        route = .map
+        var id: String {
+            switch self {
+            case .goPresent:     return "goPresent"
+            case .wave(let w):   return "wave-\(w.id)"
+            }
+        }
     }
 
-    func resetToOnboarding() {
-        route = .onboarding
-    }
+    var route: Route = .main     // Onboarding-skip until AuthService lands.
+    var tab: AppTab = .map
+    var modal: Modal?
+
+    func completeOnboarding() { route = .main }
+    func resetToOnboarding()  { route = .onboarding }
+
+    func present(_ modal: Modal) { self.modal = modal }
+    func dismissModal()          { self.modal = nil }
 }
