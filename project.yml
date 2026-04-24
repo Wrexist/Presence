@@ -1,0 +1,114 @@
+name: Presence
+options:
+  bundleIdPrefix: com.presenceapp
+  deploymentTarget:
+    iOS: "26.0"
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    TARGETED_DEVICE_FAMILY: "1"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    ENABLE_PREVIEWS: YES
+packages:
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    from: 4.5.0
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios
+    from: 5.0.0
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.0.0
+  SocketIO:
+    url: https://github.com/socketio/socket.io-client-swift
+    from: 16.0.0
+targets:
+  Presence:
+    type: application
+    platform: iOS
+    sources:
+      - path: Presence
+        excludes:
+          - "**/.DS_Store"
+          - "Resources/Info.plist"
+      - path: Shared
+    info:
+      path: Presence/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Presence
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: "Presence shows who's nearby and open to connecting — only when you're actively glowing. Your location is never tracked in the background."
+        NSUserNotificationUsageDescription: "Presence sends you a notification when someone nearby waves at you."
+        UILaunchScreen:
+          UIColorName: deepNight
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIBackgroundModes:
+          - remote-notification
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.presenceapp.ios
+        PRODUCT_NAME: Presence
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Presence/Presence.entitlements
+        DEVELOPMENT_TEAM: ""
+    dependencies:
+      - package: Lottie
+        product: Lottie
+      - package: RevenueCat
+        product: RevenueCat
+      - package: Supabase
+        product: Supabase
+      - package: SocketIO
+        product: SocketIO
+  PresenceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PresenceTests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Presence
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.presenceapp.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+  PresenceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PresenceUITests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Presence
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.presenceapp.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Presence:
+    build:
+      targets:
+        Presence: all
+        PresenceTests: [test]
+        PresenceUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PresenceTests
+        - PresenceUITests
+    archive:
+      config: Release

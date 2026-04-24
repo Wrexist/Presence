@@ -1,0 +1,45 @@
+included:
+  - Presence
+  - PresenceTests
+  - PresenceUITests
+  - Shared
+
+excluded:
+  - Presence/Resources
+  - PresenceTests
+  - PresenceUITests
+
+disabled_rules:
+  - trailing_whitespace
+  - trailing_comma
+  - line_length
+  - type_body_length
+  - file_length
+  - function_body_length
+  - cyclomatic_complexity
+  - large_tuple
+  - function_parameter_count
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+
+force_cast:
+  severity: error
+
+identifier_name:
+  min_length:
+    warning: 1
+  excluded:
+    - id
+    - x
+    - y
+    - r
+    - g
+    - b
+    - a
+
+nesting:
+  type_level: 3
