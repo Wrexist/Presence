@@ -18,7 +18,12 @@ final class LocationService: NSObject, @preconcurrency CLLocationManagerDelegate
     private(set) var isUpdating: Bool = false
 
     private let manager: CLLocationManager
-    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
+    // Queue of continuations awaiting the system's authorization callback.
+    // Using a list (not a single slot) so concurrent callers — e.g. a user
+    // rapidly tapping Go Present before the system dialog returns — all get
+    // resumed together instead of silently dropping the earlier await and
+    // leaking the continuation.
+    private var authorizationContinuations: [CheckedContinuation<CLAuthorizationStatus, Never>] = []
 
     override init() {
         self.manager = CLLocationManager()
@@ -35,15 +40,22 @@ final class LocationService: NSObject, @preconcurrency CLLocationManagerDelegate
     // MARK: - Authorization
 
     /// Requests whenInUse authorization if not yet decided, and resolves with
-    /// the resulting status. If already decided, returns immediately.
+    /// the resulting status. If already decided, returns immediately. Safe
+    /// under concurrent callers — all pending awaits resume together when
+    /// the system delivers the authorization callback.
     func requestWhenInUseAuthorization() async -> CLAuthorizationStatus {
         let current = manager.authorizationStatus
         if current != .notDetermined {
             return current
         }
         return await withCheckedContinuation { continuation in
-            authorizationContinuation = continuation
-            manager.requestWhenInUseAuthorization()
+            let shouldKickOff = authorizationContinuations.isEmpty
+            authorizationContinuations.append(continuation)
+            // Only the first caller actually triggers the system prompt;
+            // subsequent awaits just ride along on the same delegate callback.
+            if shouldKickOff {
+                manager.requestWhenInUseAuthorization()
+            }
         }
     }
 
@@ -89,9 +101,14 @@ final class LocationService: NSObject, @preconcurrency CLLocationManagerDelegate
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         authorizationStatus = status
-        if let continuation = authorizationContinuation, status != .notDetermined {
+        // Resume every waiting caller with the resolved status and clear the
+        // queue. Even a non-.notDetermined status is worth delivering — e.g.
+        // iOS may re-fire this callback when the user returns from Settings.
+        guard status != .notDetermined, !authorizationContinuations.isEmpty else { return }
+        let pending = authorizationContinuations
+        authorizationContinuations.removeAll()
+        for continuation in pending {
             continuation.resume(returning: status)
-            authorizationContinuation = nil
         }
     }
 

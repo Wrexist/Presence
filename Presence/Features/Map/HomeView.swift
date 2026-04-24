@@ -80,8 +80,11 @@ struct HomeView: View {
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .mapControlVisibility(.visible)
         .mapControls {
+            // No MapUserLocationButton here — tapping it would fire the
+            // system location prompt, bypassing the "ask only on Go Present"
+            // flow that the onboarding privacy screen sets up. Permission
+            // is requested exclusively from GoPresentView.
             MapCompass()
-            MapUserLocationButton()
         }
         .tint(PresenceColors.auroraBlue)
     }

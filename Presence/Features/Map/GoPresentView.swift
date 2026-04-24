@@ -14,6 +14,7 @@ struct GoPresentView: View {
     @Environment(ServiceContainer.self) private var services
     @State private var isActivating = false
     @State private var showDeniedAlert = false
+    @State private var isRequesting = false
 
     var body: some View {
         ZStack {
@@ -45,12 +46,14 @@ struct GoPresentView: View {
 
                 VStack(spacing: 12) {
                     GlassPillButton(
-                        title: isActivating ? "Stop glowing" : "Go Present",
+                        title: buttonTitle,
                         systemImage: isActivating ? "moon.stars" : "sparkles"
                     ) {
                         Task { await handleGoPresent() }
                     }
                     .shadow(color: PresenceColors.auroraAmber.opacity(0.6), radius: 24, y: 8)
+                    .disabled(isRequesting)
+                    .opacity(isRequesting ? 0.6 : 1)
 
                     Button {
                         coordinator.dismissModal()
@@ -76,7 +79,17 @@ struct GoPresentView: View {
 
     // MARK: - Actions
 
+    private var buttonTitle: String {
+        if isRequesting { return "Asking..." }
+        return isActivating ? "Stop glowing" : "Go Present"
+    }
+
     private func handleGoPresent() async {
+        // Defense in depth against rapid taps — the LocationService also
+        // queues overlapping continuations safely, but not spawning redundant
+        // Tasks in the first place is cleaner.
+        guard !isRequesting else { return }
+
         if isActivating {
             services.location.stopUpdating()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
@@ -84,6 +97,9 @@ struct GoPresentView: View {
             }
             return
         }
+
+        isRequesting = true
+        defer { isRequesting = false }
 
         let status = await services.location.requestWhenInUseAuthorization()
         switch status {
