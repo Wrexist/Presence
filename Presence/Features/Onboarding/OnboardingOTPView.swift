@@ -51,8 +51,9 @@ struct OnboardingOTPView: View {
                 coordinator.restartPhoneEntry()
             }
             .font(Typography.callout)
-            .foregroundStyle(PresenceColors.auroraBlue.opacity(0.9))
+            .foregroundStyle(PresenceColors.auroraBlue.opacity(coordinator.isSubmitting ? 0.4 : 0.9))
             .buttonStyle(.plain)
+            .disabled(coordinator.isSubmitting)
 
             Spacer()
 

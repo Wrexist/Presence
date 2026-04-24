@@ -72,6 +72,9 @@ final class OnboardingCoordinator {
     func submitOTP() async {
         await perform {
             try await self.auth.verifyOTP(self.otpCode, for: self.e164Phone)
+            // Guard against a late completion landing after the user tapped
+            // "Change number" — don't force the flow forward in that case.
+            guard self.step == .otp else { return }
             self.go(.username)
         }
     }
@@ -118,6 +121,9 @@ final class OnboardingCoordinator {
     // MARK: - Helpers
 
     private func go(_ next: OnboardingStep) {
+        // Clear any previous error — step transitions should start clean,
+        // otherwise an OTP error leaks onto the phone-entry screen etc.
+        errorMessage = nil
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
             step = next
         }
