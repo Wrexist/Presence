@@ -51,10 +51,14 @@
 - [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
 ### [TASK-003] Auth Flow
-- [ ] Supabase phone auth integration
-- [ ] OTP verification screen (glass design)
-- [ ] Username + bio setup screen
-- [ ] Luma onboarding animation trigger
+- [ ] Supabase phone auth integration (Sprint 1 — swaps the `AuthService` stub)
+- [x] OTP verification screen (glass design)
+- [x] Username + bio setup screen
+- [x] Luma onboarding animation trigger
+- [x] Seven-step onboarding: Welcome → Phone → OTP → Username → Bio → Privacy → Ready
+- [x] `GlassTextField` glass-styled input
+- [x] `OnboardingCoordinator` with async auth calls + error surfacing
+- [x] `AppCoordinator` routes to onboarding on first launch, persists completion in UserDefaults
 
 ---
 
@@ -107,7 +111,15 @@
 
 ## 🔖 SESSION NOTES
 
-**Last session (2026-04-24):** Scaffolded the Node.js backend (`Backend/`) — the first piece of the system that runs natively on Windows.
+**Last session (2026-04-24, onboarding):** Built the full seven-step onboarding flow in pure SwiftUI. Windows-buildable, CI-verified on commit.
+
+- New SwiftUI screens under `Features/Onboarding/`: `OnboardingView` (root with progress capsules), `OnboardingWelcomeView` (Luma hero + staggered text fade-in + "You're not alone in feeling alone."), `OnboardingPhoneView`, `OnboardingOTPView` (auto-submits on 6 digits, "Change number" link), `OnboardingUsernameView` (lowercase lock, 3–24 char regex validation), `OnboardingBioView` (live 0/3-word counter), `OnboardingPrivacyView` (three glass privacy rows + shielded Luma), `OnboardingReadyView` (celebrating Luma → hands off to map)
+- `OnboardingCoordinator` — `@MainActor @Observable`, holds form state, dispatches to the stubbed `AuthService`, surfaces `isSubmitting` and `errorMessage` to views, advances `step: OnboardingStep`
+- `Services/AuthService.swift` — actor stub with `sendOTP`, `verifyOTP`, `claimUsername`. Clear `TODO(sprint-1)` markers for Supabase Auth wiring. Validators (`isValidE164`, `isValidUsername`) exposed as statics for UI pre-checks
+- `Models/User.swift` — plain Sendable/Codable value type mirroring the DB schema
+- `DesignSystem/GlassTextField.swift` — new reusable glass-styled input with focus ring, optional prefix/icon, max-length enforcement
+- `AppCoordinator` now starts in `.onboarding` on first launch, persists completion in UserDefaults (`presence.onboarding.complete.v1`), and stores `currentUser: User?`. `completeOnboarding(with:)` takes the User from `AuthService.claimUsername`. `resetToOnboarding()` clears everything (useful for dev reset / sign-out later)
+- Deliberate design call: the onboarding flow does NOT request `CLLocationManager` permission. The privacy screen *explains* location, and the real permission prompt fires on first "Go Present" tap — matches the "location only when Present" privacy model (CLAUDE.md § Privacy Rules) and the ~40%-better-grant-rate pattern from LEARNINGS.md
 
 - `src/index.ts` — Express + Socket.io entry, pino logging, graceful shutdown
 - `src/config.ts` — Zod-validated env with `featureFlags` for Supabase / Anthropic
@@ -120,7 +132,7 @@
 
 Also fixed doc debt: CLAUDE.md's Glass hierarchy used to list `.glassEffect(.thin)` — that's not a real iOS 26 API. Updated the hierarchy to show `.regular` + `.clear` only, added a warning note, and cross-linked a LEARNINGS.md entry explaining the CI error pattern.
 
-**Next session start with:** pick a direction — (a) onboarding flow UI (phone → OTP → bio → map, pure SwiftUI, builds on Windows), (b) wire Supabase Auth + presence persistence end-to-end (Sprint 1 core loop, requires a Supabase project), or (c) harden the Backend (unit tests, fallback library expansion, deploy to Railway). The backend is now runnable locally — `cd Backend && npm install && npm run dev`, hit `/health`, then POST to `/api/icebreaker` with or without an `ANTHROPIC_API_KEY`.
+**Next session start with:** with onboarding shipped, the front-end shell is feature-complete for a demo. Next up is Sprint 1 for real — `LocationService` (CoreLocation actor), `PresenceService` (activate/deactivate, 3h expiry), and swapping `HomeView`'s `MapCanvas` placeholder for a real `Map{}`. That's the first thing that actually requires a simulator or device to properly test, so it's a good fit for a Mac-access session. In parallel, someone (you) should create the Supabase project + apply `Backend/supabase/migrations/0001_initial_schema.sql` and a RevenueCat iOS app so the env vars aren't empty by then.
 
 ---
 

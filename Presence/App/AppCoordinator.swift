@@ -2,7 +2,8 @@
 //  AppCoordinator.swift
 //  Created: 2026-04-24
 //  Purpose: Root navigation state. Owns the top-level route, the current
-//           tab, and any presented modal. Views read/write via @Environment.
+//           tab, any presented modal, and the persisted current user.
+//           Views read/write via @Environment.
 
 import SwiftUI
 
@@ -26,12 +27,31 @@ final class AppCoordinator {
         }
     }
 
-    var route: Route = .main     // Onboarding-skip until AuthService lands.
+    private static let onboardingCompleteKey = "presence.onboarding.complete.v1"
+
+    var route: Route
     var tab: AppTab = .map
     var modal: Modal?
+    var currentUser: User?
 
-    func completeOnboarding() { route = .main }
-    func resetToOnboarding() { route = .onboarding }
+    init() {
+        let done = UserDefaults.standard.bool(forKey: Self.onboardingCompleteKey)
+        self.route = done ? .main : .onboarding
+    }
+
+    func completeOnboarding(with user: User) {
+        currentUser = user
+        UserDefaults.standard.set(true, forKey: Self.onboardingCompleteKey)
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            route = .main
+        }
+    }
+
+    func resetToOnboarding() {
+        UserDefaults.standard.removeObject(forKey: Self.onboardingCompleteKey)
+        currentUser = nil
+        route = .onboarding
+    }
 
     func present(_ modal: Modal) { self.modal = modal }
     func dismissModal() { self.modal = nil }
