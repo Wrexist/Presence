@@ -1,15 +1,20 @@
 //  PresenceApp
 //  GoPresentView.swift
 //  Created: 2026-04-24
-//  Purpose: "Ready to be present?" hero screen. Centered Luma in excited
-//           state, short value prop, and the Go Present primary CTA.
-//           Matches the second panel of Design_2.
+//  Purpose: "Ready to be present?" hero screen. Requests whenInUse location
+//           permission on tap (first time only — subsequent taps use the
+//           existing grant). If the user has denied, surfaces an alert
+//           pointing to Settings.
 
+import CoreLocation
 import SwiftUI
 
 struct GoPresentView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(ServiceContainer.self) private var services
     @State private var isActivating = false
+    @State private var showDeniedAlert = false
+    @State private var isRequesting = false
 
     var body: some View {
         ZStack {
@@ -23,33 +28,37 @@ struct GoPresentView: View {
                 LumaView(state: isActivating ? .celebrating : .excited, size: 180)
 
                 VStack(spacing: 10) {
-                    Text("Ready to be present?")
+                    Text(isActivating ? "You're glowing" : "Ready to be present?")
                         .font(Typography.title)
                         .multilineTextAlignment(.center)
-                    Text("Let others know you're open to a moment — for up to 3 hours.")
-                        .font(Typography.callout)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
-                        .padding(.horizontal, 24)
+                    Text(
+                        isActivating
+                            ? "Nearby glowers can see your dot. Presence auto-expires in 3 hours."
+                            : "Let others know you're open to a moment — for up to 3 hours."
+                    )
+                    .font(Typography.callout)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
+                    .padding(.horizontal, 24)
                 }
 
                 Spacer()
 
                 VStack(spacing: 12) {
                     GlassPillButton(
-                        title: isActivating ? "You're glowing" : "Go Present",
-                        systemImage: isActivating ? "checkmark" : "sparkles"
+                        title: buttonTitle,
+                        systemImage: isActivating ? "moon.stars" : "sparkles"
                     ) {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
-                            isActivating = true
-                        }
+                        Task { await handleGoPresent() }
                     }
                     .shadow(color: PresenceColors.auroraAmber.opacity(0.6), radius: 24, y: 8)
+                    .disabled(isRequesting)
+                    .opacity(isRequesting ? 0.6 : 1)
 
                     Button {
                         coordinator.dismissModal()
                     } label: {
-                        Text("Not right now")
+                        Text(isActivating ? "Keep glowing, close" : "Not right now")
                             .font(Typography.callout)
                             .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
                     }
@@ -60,7 +69,66 @@ struct GoPresentView: View {
             .padding(.bottom, 40)
             .foregroundStyle(PresenceColors.presenceWhite)
         }
+        .alert("Location permission needed", isPresented: $showDeniedAlert) {
+            Button("Open Settings") { openAppSettings() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Presence needs your location while you're glowing so nearby people can see your dot. It's never tracked in the background.")
+        }
     }
+
+    // MARK: - Actions
+
+    private var buttonTitle: String {
+        if isRequesting { return "Asking..." }
+        return isActivating ? "Stop glowing" : "Go Present"
+    }
+
+    private func handleGoPresent() async {
+        // Defense in depth against rapid taps — the LocationService also
+        // queues overlapping continuations safely, but not spawning redundant
+        // Tasks in the first place is cleaner.
+        guard !isRequesting else { return }
+
+        if isActivating {
+            services.location.stopUpdating()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
+                isActivating = false
+            }
+            return
+        }
+
+        isRequesting = true
+        defer { isRequesting = false }
+
+        let status = await services.location.requestWhenInUseAuthorization()
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            services.location.startUpdating()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
+                isActivating = true
+            }
+            // TODO(sprint-1): call PresenceService.activate() — persists via
+            // backend, schedules 3h expiry, broadcasts over WebSocket.
+        case .denied, .restricted:
+            showDeniedAlert = true
+        case .notDetermined:
+            // Dialog dismissed without choice — just no-op.
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func openAppSettings() {
+        #if canImport(UIKit)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+        #endif
+    }
+
+    // MARK: - Components
 
     private var dismissHandle: some View {
         HStack {
@@ -79,5 +147,6 @@ struct GoPresentView: View {
 #Preview {
     GoPresentView()
         .environment(AppCoordinator())
+        .environment(ServiceContainer.preview())
         .preferredColorScheme(.dark)
 }

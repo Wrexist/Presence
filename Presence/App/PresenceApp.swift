@@ -31,7 +31,9 @@ private struct RootView: View {
         ZStack {
             switch coordinator.route {
             case .onboarding:
-                OnboardingPlaceholder()
+                OnboardingView { user in
+                    coordinator.completeOnboarding(with: user)
+                }
             case .main:
                 MainTabShell()
             }
@@ -78,35 +80,6 @@ private struct MainTabShell: View {
                 onGoPresent: { coordinator.present(.goPresent) }
             )
             .padding(.bottom, 12)
-        }
-    }
-}
-
-private struct OnboardingPlaceholder: View {
-    @Environment(AppCoordinator.self) private var coordinator
-
-    var body: some View {
-        ZStack {
-            PresenceBackground()
-            VStack(spacing: 28) {
-                Spacer()
-                LumaView(state: .idle, size: 180)
-                VStack(spacing: 10) {
-                    Text("Presence")
-                        .font(Typography.display)
-                    Text("You're not alone in feeling alone.")
-                        .font(Typography.callout)
-                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
-                        .multilineTextAlignment(.center)
-                }
-                Spacer()
-                GlassPillButton(title: "Get started", systemImage: "sparkles") {
-                    coordinator.completeOnboarding()
-                }
-                .padding(.bottom, 32)
-            }
-            .padding(.horizontal, 24)
-            .foregroundStyle(PresenceColors.presenceWhite)
         }
     }
 }

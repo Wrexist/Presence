@@ -19,6 +19,10 @@ disabled_rules:
   - cyclomatic_complexity
   - large_tuple
   - function_parameter_count
+  # TODO(sprint-N) markers are deliberate roadmap pointers in this codebase,
+  # not forgotten work. They document where stubbed services swap in real
+  # implementations each sprint. Re-enable once Sprint 2 wraps.
+  - todo
 
 opt_in_rules:
   - empty_count

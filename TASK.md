@@ -51,24 +51,28 @@
 - [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
 ### [TASK-003] Auth Flow
-- [ ] Supabase phone auth integration
-- [ ] OTP verification screen (glass design)
-- [ ] Username + bio setup screen
-- [ ] Luma onboarding animation trigger
+- [ ] Supabase phone auth integration (Sprint 1 — swaps the `AuthService` stub)
+- [x] OTP verification screen (glass design)
+- [x] Username + bio setup screen
+- [x] Luma onboarding animation trigger
+- [x] Seven-step onboarding: Welcome → Phone → OTP → Username → Bio → Privacy → Ready
+- [x] `GlassTextField` glass-styled input
+- [x] `OnboardingCoordinator` with async auth calls + error surfacing
+- [x] `AppCoordinator` routes to onboarding on first launch, persists completion in UserDefaults
 
 ---
 
 ## 📋 BACKLOG (Ordered by Priority)
 
 ### Sprint 1 — Core Loop
-- [ ] TASK-004: MapView with MapKit + Liquid Glass overlays
-- [ ] TASK-005: LocationService (CoreLocation wrapper)
+- [ ] TASK-004: MapView with MapKit + Liquid Glass overlays (partial — real `Map{}` + annotations done; Liquid Glass on controls inherits from system)
+- [x] TASK-005: LocationService (CoreLocation wrapper) — `Services/LocationService.swift`
 - [ ] TASK-006: PresenceService (toggle on/off, 3h expiry)
 - [ ] TASK-007: Supabase PostGIS integration (store/query presences)
 - [ ] TASK-008: WebSocket service (real-time dot updates on map)
-- [ ] TASK-009: PresenceDotView (glowing marker on map)
-- [ ] TASK-010: "Go Present" button (main CTA, glass pill)
-- [ ] TASK-011: Luma component + idle animation (Lottie)
+- [x] TASK-009: PresenceDotView (glowing marker on map)
+- [x] TASK-010: "Go Present" button (main CTA, glass pill)
+- [ ] TASK-011: Luma component + idle animation (Lottie — currently pure SwiftUI)
 
 ### Sprint 2 — Wave System
 - [ ] TASK-012: Tap-a-dot → wave preview sheet
@@ -107,7 +111,30 @@
 
 ## 🔖 SESSION NOTES
 
-**Last session (2026-04-24):** Scaffolded the Node.js backend (`Backend/`) — the first piece of the system that runs natively on Windows.
+**Last session (2026-04-24, MapKit + LocationService):** Stacked on top of onboarding-flow. Real SwiftUI `Map{}` replaces the stylized canvas, and the first-tap location-permission flow is now wired end-to-end.
+
+- `Services/LocationService.swift` — `@MainActor @Observable` NSObject wrapping `CLLocationManager`. `requestWhenInUseAuthorization()` is async (bridges the delegate callback via `CheckedContinuation`). `privacyReducedLocation()` jitters the coord by ~±50m with longitude scaled by `cos(lat)` so the radius stays roughly constant. Delegate uses `@preconcurrency` to keep Swift 6 strict concurrency happy. Rejects fixes with accuracy > 200m or staler than 15s.
+- `Features/Map/HomeView.swift` — rewritten to use real `Map(position:)` with `Annotation` overlays for preview presence dots, floating Lumas (scattered on the map, per Design_2), and the user's own dot (only rendered when CoreLocation has a fix). `MapCompass` + `MapUserLocationButton` controls, POIs excluded, flat elevation. Camera defaults to a San-Francisco region; panning is free.
+- `Features/Map/GoPresentView.swift` — first Go Present tap calls `services.location.requestWhenInUseAuthorization()`. Authorized: starts updates, flips to glowing state. Denied/restricted: surfaces an alert with an "Open Settings" deep link. Added a "Stop glowing" toggle on subsequent taps that calls `stopUpdating()`.
+- `App/ServiceContainer.swift` — now holds `LocationService`. `.live()` and `.preview()` both instantiate a real service (permission prompts are inert in previews).
+
+**Privacy model checkpoint:** the system `CLLocationManager` prompt fires ONLY on first Go Present tap, not during onboarding. Matches CLAUDE.md § Privacy Rules ("Location ONLY when Present") and the LEARNINGS note that explanation-before-ask yields ~40% better grant rates.
+
+**Scope deferred for follow-up slices:**
+- `PresenceService` that activates via the backend and schedules the 3h expiry (TODO marker already in `handleGoPresent`)
+- `BackendClient` for HTTP calls
+- `SocketService` + realtime dot updates
+- Sprint 1 backend routes (`/api/presence`) which currently return 501
+
+**Last session (2026-04-24, onboarding):** Built the full seven-step onboarding flow in pure SwiftUI. Windows-buildable, CI-verified on commit.
+
+- New SwiftUI screens under `Features/Onboarding/`: `OnboardingView` (root with progress capsules), `OnboardingWelcomeView` (Luma hero + staggered text fade-in + "You're not alone in feeling alone."), `OnboardingPhoneView`, `OnboardingOTPView` (auto-submits on 6 digits, "Change number" link), `OnboardingUsernameView` (lowercase lock, 3–24 char regex validation), `OnboardingBioView` (live 0/3-word counter), `OnboardingPrivacyView` (three glass privacy rows + shielded Luma), `OnboardingReadyView` (celebrating Luma → hands off to map)
+- `OnboardingCoordinator` — `@MainActor @Observable`, holds form state, dispatches to the stubbed `AuthService`, surfaces `isSubmitting` and `errorMessage` to views, advances `step: OnboardingStep`
+- `Services/AuthService.swift` — actor stub with `sendOTP`, `verifyOTP`, `claimUsername`. Clear `TODO(sprint-1)` markers for Supabase Auth wiring. Validators (`isValidE164`, `isValidUsername`) exposed as statics for UI pre-checks
+- `Models/User.swift` — plain Sendable/Codable value type mirroring the DB schema
+- `DesignSystem/GlassTextField.swift` — new reusable glass-styled input with focus ring, optional prefix/icon, max-length enforcement
+- `AppCoordinator` now starts in `.onboarding` on first launch, persists completion in UserDefaults (`presence.onboarding.complete.v1`), and stores `currentUser: User?`. `completeOnboarding(with:)` takes the User from `AuthService.claimUsername`. `resetToOnboarding()` clears everything (useful for dev reset / sign-out later)
+- Deliberate design call: the onboarding flow does NOT request `CLLocationManager` permission. The privacy screen *explains* location, and the real permission prompt fires on first "Go Present" tap — matches the "location only when Present" privacy model (CLAUDE.md § Privacy Rules) and the ~40%-better-grant-rate pattern from LEARNINGS.md
 
 - `src/index.ts` — Express + Socket.io entry, pino logging, graceful shutdown
 - `src/config.ts` — Zod-validated env with `featureFlags` for Supabase / Anthropic
@@ -120,7 +147,7 @@
 
 Also fixed doc debt: CLAUDE.md's Glass hierarchy used to list `.glassEffect(.thin)` — that's not a real iOS 26 API. Updated the hierarchy to show `.regular` + `.clear` only, added a warning note, and cross-linked a LEARNINGS.md entry explaining the CI error pattern.
 
-**Next session start with:** pick a direction — (a) onboarding flow UI (phone → OTP → bio → map, pure SwiftUI, builds on Windows), (b) wire Supabase Auth + presence persistence end-to-end (Sprint 1 core loop, requires a Supabase project), or (c) harden the Backend (unit tests, fallback library expansion, deploy to Railway). The backend is now runnable locally — `cd Backend && npm install && npm run dev`, hit `/health`, then POST to `/api/icebreaker` with or without an `ANTHROPIC_API_KEY`.
+**Next session start with:** with LocationService + real MapKit in, the next cohesive Sprint 1 slice is the backend wiring — a `BackendClient` (URLSession) + `PresenceService` that hits `/api/presence` for activate/nearby/deactivate. Then swap `HomeView`'s preview-dots array for a real query. That slice depends on (a) the Sprint 1 backend routes being implemented (currently 501) and ideally (b) a Supabase project existing so the backend can actually persist.
 
 ---
 
