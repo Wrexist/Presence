@@ -128,11 +128,10 @@ private extension View {
     @ViewBuilder
     func glassSurface<S: Shape>(in shape: S, thin: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
-            if thin {
-                self.glassEffect(.thin, in: shape)
-            } else {
-                self.glassEffect(.regular, in: shape)
-            }
+            // iOS 26's Glass type exposes .regular (and .clear) — no .thin
+            // variant exists. Use .regular universally; the `thin` flag only
+            // affects the Material fallback below.
+            self.glassEffect(.regular, in: shape)
         } else {
             self.background(thin ? .thinMaterial : .regularMaterial, in: shape)
         }
