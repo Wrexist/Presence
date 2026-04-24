@@ -13,6 +13,8 @@ final class PresenceLaunchTests: XCTestCase {
     func testAppLaunches() throws {
         let app = XCUIApplication()
         app.launch()
-        XCTAssert(app.staticTexts["Presence"].waitForExistence(timeout: 5))
+        // Default route is .main → MainTabShell, so the "Nearby" tab button
+        // from GlassTabBar is always visible on a successful launch.
+        XCTAssert(app.buttons["Nearby"].waitForExistence(timeout: 5))
     }
 }
