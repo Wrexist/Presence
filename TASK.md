@@ -11,28 +11,31 @@
 
 ## ✅ COMPLETED TASKS
 
-*None yet — project just initialized*
+### [TASK-002] Design System — Liquid Glass Foundation (code-only portion)
+- [x] GlassTokens enum complete (`DesignSystem/GlassTokens.swift`)
+- [x] GlassCard component
+- [x] GlassPillButton component
+- [x] GlassIconButton component
+- [x] GlassBottomSheet component
+- [x] GlassChip component (bonus — needed for countdowns/status)
+- [x] Fallback Material components for iOS < 26 (centralized in `glassSurface(in:thin:)`)
+- [x] Preview all components in light + dark mode + Reduce Transparency
+
+### [TASK-001] Project Setup (partial — code-only portion)
+- [x] GlassTokens.swift design system file
+- [x] Color palette defined in PresenceColors.swift (aurora + base + dot palette helper)
+- [x] Typography.swift (SF Pro Rounded scale)
 
 ---
 
 ## 🔨 IN PROGRESS
 
-### [TASK-001] Project Setup
+### [TASK-001] Project Setup (remaining — requires Xcode + dashboards)
 - [ ] Xcode 26 project created with iOS 26 target
+- [ ] Wire `DesignSystem/*.swift` into the Xcode target
 - [ ] SwiftUI app shell with AppCoordinator
 - [ ] Supabase project created and configured
 - [ ] RevenueCat dashboard setup
-- [ ] GlassTokens.swift design system file
-- [ ] Color palette defined in PresenceColors.swift
-
-### [TASK-002] Design System — Liquid Glass Foundation
-- [ ] GlassTokens enum complete
-- [ ] GlassCard component (used for venue overlays)
-- [ ] GlassPillButton component (used for CTAs)
-- [ ] GlassIconButton component (used for map controls)
-- [ ] GlassBottomSheet component (used for wave sheet)
-- [ ] Fallback Material components for iOS < 26
-- [ ] Preview all components in light + dark mode
 
 ### [TASK-003] Auth Flow
 - [ ] Supabase phone auth integration
@@ -91,8 +94,9 @@
 
 ## 🔖 SESSION NOTES
 
-**Last session:** —  
-**Next session start with:** TASK-001 project setup
+**Last session (2026-04-24):** Scaffolded the Liquid Glass design system in `DesignSystem/` — `GlassTokens.swift`, `PresenceColors.swift` (with `Color(hex:)` extension and deterministic per-user dot-color helper), `Typography.swift` (SF Pro Rounded scale), and `GlassComponents.swift` (GlassCard, GlassPillButton, GlassIconButton, GlassBottomSheet, GlassChip + iOS 26 gating with Material fallback). Four `#Preview`s cover dark / light / bottom sheet / Reduce Transparency. Files are pure Swift — drop them into the Xcode 26 target once it's created.
+
+**Next session start with:** TASK-001 remainder — create the Xcode 26 project, add the `DesignSystem/` folder to the target, then build the app shell (`PresenceApp.swift`, `AppCoordinator.swift`, `ServiceContainer.swift`).
 
 ---
 
