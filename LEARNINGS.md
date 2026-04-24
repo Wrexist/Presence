@@ -30,6 +30,7 @@
 
 ### glassEffect API Rules (Critical)
 - `.glassEffect()` requires iOS 26+ — always gate with `#available(iOS 26.0, *)`
+- **The `Glass` enum exposes only `.regular` and `.clear` — there is no `.thin` variant.** Calling `.glassEffect(.thin, in: shape)` compiles against a non-existent member and errors with `type 'Glass' has no member 'thin'` on Xcode 26.0.1 (verified 2026-04-24 in CI). For thinner surfaces, use `.clear` on iOS 26 and `.thinMaterial` in the fallback branch.
 - `GlassEffectContainer` is required when you have multiple glass shapes that should morph together (e.g., tab bar items)
 - Stacking glass layers creates visual mud — avoid entirely
 - Glass on scrollable content looks broken — confirmed by Apple HIG

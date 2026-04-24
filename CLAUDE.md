@@ -185,10 +185,14 @@ enum GlassTokens {
 ```
 GlassEffectContainer (morphing group)
     └── .glassEffect()              → Primary: nav bars, main CTAs
-    └── .glassEffect(.regular)     → Secondary: cards, bottom sheets  
-    └── .glassEffect(.thin)        → Tertiary: subtle overlays, status
-    └── Material (fallback)        → iOS < 26 only
+    └── .glassEffect(.regular, in:) → Secondary: cards, bottom sheets, chips
+    └── .glassEffect(.clear, in:)   → Tertiary: subtle overlays (use sparingly)
+    └── Material (fallback)         → iOS < 26 only
 ```
+> ⚠️ The iOS 26 `Glass` enum only exposes `.regular` and `.clear`. There is
+> **no `.thin` variant** (an earlier draft of this file claimed otherwise).
+> For a thinner read, use `.clear` on iOS 26, or fall back to
+> `.thinMaterial` on older OSes.
 
 ### What MUST use Liquid Glass
 - Tab bar
