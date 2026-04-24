@@ -29,7 +29,7 @@ struct GlassCard<Content: View>: View {
 
 struct GlassPillButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     let action: () -> Void
 
     var body: some View {
@@ -103,7 +103,7 @@ struct GlassBottomSheet<Content: View>: View {
 
 struct GlassChip: View {
     let text: String
-    var systemImage: String? = nil
+    var systemImage: String?
 
     var body: some View {
         HStack(spacing: 6) {

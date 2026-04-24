@@ -31,8 +31,8 @@ final class AppCoordinator {
     var modal: Modal?
 
     func completeOnboarding() { route = .main }
-    func resetToOnboarding()  { route = .onboarding }
+    func resetToOnboarding() { route = .onboarding }
 
     func present(_ modal: Modal) { self.modal = modal }
-    func dismissModal()          { self.modal = nil }
+    func dismissModal() { self.modal = nil }
 }
