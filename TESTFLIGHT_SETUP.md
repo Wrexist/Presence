@@ -117,6 +117,14 @@ Build numbers are stamped automatically from `github.run_number`, so every run g
 
 ---
 
+## How to update the app icon
+
+The icon source lives at **`Presence/Icon.png`** (any square PNG, ≥ 1024×1024). The workflow automatically resizes it to the App Store's required 1024×1024 and drops it into the asset catalog during the archive step. The resized icon is what ships in the app, what shows up on TestFlight, and what becomes the App Store listing icon.
+
+To update: replace `Presence/Icon.png`, commit, re-run the workflow. Nothing else to change.
+
+---
+
 ## How to increment the marketing version
 
 The app version (what users see: 1.0.0, 1.1.0, etc.) lives in `project.yml` under `MARKETING_VERSION`. Bump it when you want a new user-facing version, push, then run the workflow.

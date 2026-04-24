@@ -117,14 +117,25 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST" || { echo "FATAL: NSLocationWhenInUseUsageDescription missing"; exit 1; }
           echo "All required keys present."
 
-      - name: Generate app icon (fallback)
+      - name: Prepare app icon from Presence/Icon.png
         run: |
-          ICON="Presence/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
-          if [ -f "$ICON" ]; then
-            echo "App icon already exists, skipping generation"
-            exit 0
-          fi
-          python3 - << 'EOF'
+          SRC="Presence/Icon.png"
+          DEST_DIR="Presence/Resources/Assets.xcassets/AppIcon.appiconset"
+          DEST="$DEST_DIR/AppIcon.png"
+          mkdir -p "$DEST_DIR"
+
+          if [ -f "$SRC" ]; then
+            # Resize to the exact 1024x1024 App Store / TestFlight icon size,
+            # flatten any alpha to opaque (App Store rejects transparent icons),
+            # and strip the alpha channel entirely.
+            sips -s format png -s formatOptions default \
+                 -z 1024 1024 "$SRC" --out "$DEST" >/dev/null
+            sips -s hasAlpha no "$DEST" >/dev/null 2>&1 || true
+            DIMS=$(sips -g pixelWidth -g pixelHeight "$DEST" | awk '/pixelWidth|pixelHeight/ {print $2}' | paste -sd x -)
+            echo "App icon sourced from $SRC → $DEST ($DIMS)"
+          else
+            echo "WARN: $SRC not found — generating a deep-indigo placeholder so the build still ships"
+            python3 - << 'EOF'
           import struct, zlib, os
 
           def make_png(width, height, r, g, b):
@@ -139,11 +150,11 @@ jobs:
 
           out = 'Presence/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
           os.makedirs(os.path.dirname(out), exist_ok=True)
-          # Presence aurora midnight — deep indigo placeholder so TestFlight builds still ship
           with open(out, 'wb') as f:
               f.write(make_png(1024, 1024, 12, 18, 48))
-          print(f"Generated {out}")
+          print(f"Generated placeholder {out}")
           EOF
+          fi
 
       - name: Import certificate
         env:
