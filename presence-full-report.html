@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presence — Full App Report 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #05050f;
+  --bg2: #0a0a1e;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --aurora-blue: #4FC3F7;
+  --aurora-violet: #7C4DFF;
+  --aurora-green: #1DE9B6;
+  --aurora-amber: #FFB84D;
+  --aurora-pink: #F48FB1;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --white: #ffffff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;line-height:1.7;overflow-x:hidden;}
+
+/* Aurora background */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at 20% 20%, rgba(124,77,255,0.12) 0%, transparent 60%),
+             radial-gradient(ellipse at 80% 80%, rgba(79,195,247,0.08) 0%, transparent 60%),
+             radial-gradient(ellipse at 50% 50%, rgba(29,233,182,0.04) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+.wrapper{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:40px 24px 100px;}
+
+/* HERO */
+.hero{text-align:center;padding:80px 0 60px;position:relative;}
+.hero-tag{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.25em;color:var(--aurora-blue);text-transform:uppercase;margin-bottom:24px;}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(48px,8vw,96px);font-weight:800;line-height:0.95;letter-spacing:-0.03em;color:#fff;margin-bottom:32px;}
+.hero-title .glow{background:linear-gradient(135deg,var(--aurora-violet),var(--aurora-blue),var(--aurora-green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-size:18px;color:var(--muted);max-width:560px;margin:0 auto 40px;font-weight:300;}
+.hero-pills{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.pill{font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:999px;border:1px solid;letter-spacing:0.05em;}
+.pill-blue{color:var(--aurora-blue);border-color:rgba(79,195,247,0.3);background:rgba(79,195,247,0.08);}
+.pill-violet{color:#b39ddb;border-color:rgba(124,77,255,0.3);background:rgba(124,77,255,0.08);}
+.pill-green{color:var(--aurora-green);border-color:rgba(29,233,182,0.3);background:rgba(29,233,182,0.08);}
+
+/* Luma visualization */
+.luma-hero{width:160px;height:160px;margin:0 auto 40px;position:relative;}
+.luma-body{width:80px;height:96px;background:radial-gradient(ellipse at 40% 35%,rgba(255,255,255,0.9),rgba(200,230,255,0.6));border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;position:absolute;top:20px;left:40px;animation:lumaFloat 3.2s ease-in-out infinite;box-shadow:0 0 40px rgba(79,195,247,0.6),0 0 80px rgba(79,195,247,0.3);}
+.luma-eye{width:18px;height:18px;background:#0a0a1e;border-radius:50%;position:absolute;top:30px;animation:lumaFloat 3.2s ease-in-out infinite;}
+.luma-eye.left{left:18px;} .luma-eye.right{right:18px;}
+.luma-eye::after{content:'';width:6px;height:6px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;}
+.luma-wisp{width:3px;border-radius:999px;background:rgba(79,195,247,0.5);position:absolute;bottom:-30px;animation:luma-wisp 3.2s ease-in-out infinite;}
+.luma-wisp:nth-child(1){height:24px;left:50px;animation-delay:0.1s;}
+.luma-wisp:nth-child(2){height:32px;left:60px;animation-delay:0.3s;}
+.luma-wisp:nth-child(3){height:20px;left:70px;animation-delay:0.2s;}
+.luma-glow{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(79,195,247,0.2),transparent 70%);position:absolute;top:0;left:0;animation:lumaGlow 4s ease-in-out infinite;}
+@keyframes lumaFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+@keyframes lumaGlow{0%,100%{opacity:0.6;transform:scale(1);}50%{opacity:1;transform:scale(1.1);}}
+@keyframes luma-wisp{0%,100%{transform:translateY(0) rotate(-5deg);}50%{transform:translateY(-8px) rotate(5deg);}}
+
+/* Section styles */
+.sec-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:8px;}
+.sec-sub{font-size:14px;color:var(--muted);margin-bottom:32px;}
+.divider{display:flex;align-items:center;gap:16px;margin:64px 0 40px;}
+.divider h2{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase;white-space:nowrap;}
+.divider-line{flex:1;height:1px;background:var(--border);}
+
+/* Glass cards */
+.glass-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+.glass-card:hover{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);}
+
+/* Grid layouts */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:700px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+/* Stats */
+.stat-num{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;line-height:1;}
+.stat-label{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.05em;margin-top:4px;}
+.blue{color:var(--aurora-blue);}
+.violet{color:var(--aurora-violet);}
+.green{color:var(--aurora-green);}
+.amber{color:var(--aurora-amber);}
+.pink{color:var(--aurora-pink);}
+
+/* Problem statement */
+.problem-quote{font-family:'Syne',sans-serif;font-size:clamp(20px,3vw,32px);font-weight:700;color:#fff;line-height:1.3;text-align:center;padding:48px 32px;border:1px solid rgba(79,195,247,0.2);border-radius:24px;background:rgba(79,195,247,0.04);margin-bottom:40px;position:relative;}
+.problem-quote::before{content:'"';font-size:80px;color:rgba(79,195,247,0.15);position:absolute;top:-10px;left:20px;font-family:Georgia,serif;line-height:1;}
+
+/* User journey flow */
+.flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 0;margin-bottom:40px;}
+.flow-step{flex-shrink:0;text-align:center;min-width:100px;}
+.flow-dot{width:44px;height:44px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid;}
+.flow-step-label{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.05em;}
+.flow-arrow{color:var(--muted);font-size:20px;flex-shrink:0;padding:0 4px;margin-bottom:22px;}
+
+/* Feature list */
+.feature-item{display:flex;gap:16px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--border);}
+.feature-item:last-child{border-bottom:none;}
+.feature-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.feature-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;}
+.feature-desc{font-size:13px;color:var(--muted);line-height:1.6;}
+.priority-tag{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;float:right;margin-top:2px;}
+.p0{background:rgba(239,68,68,0.15);color:#fca5a5;}
+.p1{background:rgba(245,158,11,0.15);color:#fcd34d;}
+
+/* Luma states grid */
+.luma-state{text-align:center;padding:20px 12px;}
+.luma-state-dot{width:48px;height:48px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:20px;position:relative;}
+.luma-state-dot::after{content:'';position:absolute;inset:-8px;border-radius:50%;animation:statePulse 2s ease-in-out infinite;}
+@keyframes statePulse{0%,100%{opacity:0.5;transform:scale(1);}50%{opacity:1;transform:scale(1.1);}}
+.luma-state-name{font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-blue);letter-spacing:0.1em;margin-bottom:4px;}
+.luma-state-desc{font-size:12px;color:var(--muted);}
+
+/* Tech stack */
+.tech-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.tech-row:last-child{border-bottom:none;}
+.tech-badge{font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(124,77,255,0.12);color:#b39ddb;border:1px solid rgba(124,77,255,0.2);white-space:nowrap;}
+.tech-name{font-size:14px;color:#fff;font-weight:500;}
+.tech-desc{font-size:13px;color:var(--muted);}
+
+/* Roadmap timeline */
+.timeline{position:relative;padding-left:32px;}
+.timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--aurora-violet),var(--aurora-blue),var(--aurora-green));}
+.phase{margin-bottom:40px;position:relative;}
+.phase-dot{width:20px;height:20px;border-radius:50%;position:absolute;left:-37px;top:2px;border:2px solid;display:flex;align-items:center;justify-content:center;}
+.phase-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;margin-bottom:6px;}
+.phase-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;}
+.phase-weeks{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.phase-tasks{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.phase-task{font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start;}
+.phase-task::before{content:'→';color:var(--muted);flex-shrink:0;}
+
+/* Monetization */
+.pricing-card{border-radius:20px;padding:28px;position:relative;overflow:hidden;}
+.pricing-card.free{border:1px solid var(--border);background:var(--surface);}
+.pricing-card.premium{border:1px solid rgba(124,77,255,0.4);background:linear-gradient(135deg,rgba(124,77,255,0.12),rgba(79,195,247,0.06));}
+.pricing-card.b2b{border:1px solid rgba(29,233,182,0.3);background:rgba(29,233,182,0.05);}
+.pricing-tier{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;margin-bottom:8px;}
+.pricing-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;}
+.pricing-price{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;line-height:1;margin-bottom:16px;}
+.pricing-features{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.pricing-features li{font-size:13px;display:flex;gap:8px;}
+.pricing-features li::before{content:'✓';flex-shrink:0;}
+.pricing-card.free .pricing-features li::before{color:var(--muted);}
+.pricing-card.premium .pricing-features li::before{color:var(--aurora-violet);}
+.pricing-card.b2b .pricing-features li::before{color:var(--aurora-green);}
+
+/* Mascot research section */
+.research-stat{padding:20px;border-radius:14px;background:var(--surface);border:1px solid var(--border);text-align:center;}
+.research-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-bottom:4px;}
+.research-label{font-size:12px;color:var(--muted);}
+
+/* Liquid Glass showcase */
+.glass-showcase{background:linear-gradient(135deg,rgba(124,77,255,0.08),rgba(79,195,247,0.04));border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;margin-bottom:40px;}
+.glass-demo{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:20px;}
+.glass-el{border-radius:14px;padding:12px 20px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);font-size:13px;cursor:pointer;transition:all 0.2s;color:#fff;}
+.glass-el:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.25);}
+.glass-el.pill{border-radius:999px;padding:10px 22px;background:linear-gradient(135deg,rgba(124,77,255,0.3),rgba(79,195,247,0.2));border-color:rgba(124,77,255,0.5);font-weight:500;}
+.glass-el.icon{width:48px;height:48px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.glass-code{background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:20px;font-family:'DM Mono',monospace;font-size:12px;color:#94a3b8;overflow-x:auto;white-space:pre;}
+.code-key{color:var(--aurora-violet);}
+.code-val{color:var(--aurora-green);}
+.code-str{color:var(--aurora-amber);}
+.code-com{color:var(--muted);}
+
+/* Claude API integration */
+.api-box{background:rgba(0,0,0,0.3);border:1px solid rgba(124,77,255,0.2);border-radius:16px;padding:24px;margin-top:20px;}
+.api-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-violet);letter-spacing:0.15em;margin-bottom:12px;}
+
+/* ASO */
+.aso-keyword{display:inline-block;font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);color:var(--aurora-blue);margin:3px;}
+
+/* Footer */
+footer{text-align:center;padding-top:60px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-tag">Full Product Report — April 2026</div>
+  
+  <div class="luma-hero">
+    <div class="luma-glow"></div>
+    <div class="luma-body">
+      <div class="luma-eye left"></div>
+      <div class="luma-eye right"></div>
+    </div>
+    <div class="luma-wisp"></div>
+    <div class="luma-wisp"></div>
+    <div class="luma-wisp"></div>
+  </div>
+
+  <h1 class="hero-title">Presence<br><span class="glow">Glow Together</span></h1>
+  <p class="hero-subtitle">The ambient social layer for the loneliness epidemic. Real people. Real place. Right now.</p>
+  <div class="hero-pills">
+    <span class="pill pill-blue">iOS 26 · Liquid Glass</span>
+    <span class="pill pill-violet">Claude Opus 4.7</span>
+    <span class="pill pill-green">SwiftUI · Supabase · RevenueCat</span>
+  </div>
+</header>
+
+<!-- THE PROBLEM -->
+<div class="divider"><div class="divider-line"></div><h2>The Problem</h2><div class="divider-line"></div></div>
+
+<div class="problem-quote">Two-thirds of adults feel lonely. The Surgeon General called it a public health epidemic. And yet, no app has actually fixed it.</div>
+
+<div class="grid-4" style="margin-bottom:40px">
+  <div class="glass-card"><div class="stat-num blue">67%</div><div class="stat-label">Adults report loneliness</div></div>
+  <div class="glass-card"><div class="stat-num violet">$16M</div><div class="stat-label">Entire friendship app category revenue — vs $4B+ for dating</div></div>
+  <div class="glass-card"><div class="stat-num green">15×</div><div class="stat-label">Cigarettes/day — equivalent health impact of isolation</div></div>
+  <div class="glass-card"><div class="stat-num amber">0</div><div class="stat-label">Apps that eliminate the activation energy of the first interaction</div></div>
+</div>
+
+<div class="glass-card" style="margin-bottom:40px">
+  <div class="sec-title">Why Every Existing App Fails</div>
+  <div class="sec-sub">Market gap analysis — validated</div>
+  <div class="feature-item">
+    <div class="feature-icon" style="background:rgba(239,68,68,0.1);">❌</div>
+    <div><div class="feature-name">Meetup / Bumble BFF</div><div class="feature-desc">Match on interests, but the gap from "matched" to "actually met" is too large. Most matches never materialize into a meeting.</div></div>
+  </div>
+  <div class="feature-item">
+    <div class="feature-icon" style="background:rgba(239,68,68,0.1);">❌</div>
+    <div><div class="feature-name">Dating Apps (wrong frame)</div><div class="feature-desc">Romantic framing creates the wrong social dynamic for friendship. The stigma of "needing a dating app" transfers — and amplifies.</div></div>
+  </div>
+  <div class="feature-item">
+    <div class="feature-icon" style="background:rgba(239,68,68,0.1);">❌</div>
+    <div><div class="feature-name">Nextdoor / Neighborhood Apps</div><div class="feature-desc">Not real-time, not about meeting, not about reducing the moment of friction. It's a notice board, not a connector.</div></div>
+  </div>
+  <div class="feature-item" style="border:none">
+    <div class="feature-icon" style="background:rgba(29,233,182,0.1);">✅</div>
+    <div><div class="feature-name">Presence — The Gap</div><div class="feature-desc">Make both people's intent simultaneously visible. Replace the awkward opener with AI. Anchor everything to a physical place. Eliminate the activation energy entirely.</div></div>
+  </div>
+</div>
+
+<!-- THE SOLUTION -->
+<div class="divider"><div class="divider-line"></div><h2>The Solution</h2><div class="divider-line"></div></div>
+
+<div class="sec-title">The Core Loop</div>
+<div class="sec-sub">What the app actually does, in one minute or less</div>
+
+<div class="flow" style="margin-bottom:32px">
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(124,77,255,0.2);border-color:rgba(124,77,255,0.5);">📍</div>
+    <div class="flow-step-label">Open Map</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(29,233,182,0.2);border-color:rgba(29,233,182,0.5);">✨</div>
+    <div class="flow-step-label">Go Present</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(79,195,247,0.2);border-color:rgba(79,195,247,0.5);">👁️</div>
+    <div class="flow-step-label">See Nearby Dots</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(255,184,77,0.2);border-color:rgba(255,184,77,0.5);">🤖</div>
+    <div class="flow-step-label">AI Icebreaker</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(244,143,177,0.2);border-color:rgba(244,143,177,0.5);">👋</div>
+    <div class="flow-step-label">Wave</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(124,77,255,0.2);border-color:rgba(124,77,255,0.5);">💬</div>
+    <div class="flow-step-label">10-Min Chat</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <div class="flow-dot" style="background:rgba(29,233,182,0.2);border-color:rgba(29,233,182,0.5);">🌟</div>
+    <div class="flow-step-label">Real Connection</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="divider"><div class="divider-line"></div><h2>Features</h2><div class="divider-line"></div></div>
+
+<div class="grid-2" style="margin-bottom:40px">
+  <div class="glass-card">
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(79,195,247,0.12);">🗺️</div>
+      <div><div class="feature-name">Ambient Presence Map <span class="priority-tag p0">P0</span></div><div class="feature-desc">Full-screen MapKit with Liquid Glass overlays. Glowing aurora dots show who's Present nearby. Max 50 dots, clustering beyond. PostGIS radius queries.</div></div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(29,233,182,0.12);">✨</div>
+      <div><div class="feature-name">Presence Toggle <span class="priority-tag p0">P0</span></div><div class="feature-desc">Glass pill "Go Present" button. Opts in, starts location (whenInUse, ±50m reduced precision). Auto-expires in 3 hours.</div></div>
+    </div>
+    <div class="feature-item" style="border:none">
+      <div class="feature-icon" style="background:rgba(124,77,255,0.12);">👋</div>
+      <div><div class="feature-name">Wave System <span class="priority-tag p0">P0</span></div><div class="feature-desc">Tap a dot → glass sheet → AI icebreaker loads → wave → mutual wave unlocks 10-minute timed chat → connection recorded.</div></div>
+    </div>
+  </div>
+  <div class="glass-card">
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(255,184,77,0.12);">🤖</div>
+      <div><div class="feature-name">AI Icebreaker (Opus 4.7) <span class="priority-tag p0">P0</span></div><div class="feature-desc">Claude generates a single contextual opener based on venue type, time, and both users' 3-word bios. Max 200 chars. ~800ms. Fallback library for outages.</div></div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon" style="background:rgba(244,143,177,0.12);">⏱️</div>
+      <div><div class="feature-name">10-Minute Chat Window <span class="priority-tag p0">P0</span></div><div class="feature-desc">Sacred constraint. Countdown chip visible. Chat locks at 00:00 with "Head over and say hi!" No history stored. Luma celebrates after.</div></div>
+    </div>
+    <div class="feature-item" style="border:none">
+      <div class="feature-icon" style="background:rgba(29,233,182,0.12);">💰</div>
+      <div><div class="feature-name">Presence+ Subscription <span class="priority-tag p1">P1</span></div><div class="feature-desc">3 presences/week free. Presence+ = unlimited + see nearby count before activating + Luma skins. $6.99/mo or $49.99/yr via RevenueCat.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- LUMA SECTION -->
+<div class="divider"><div class="divider-line"></div><h2>Luma — The Mascot</h2><div class="divider-line"></div></div>
+
+<div class="glass-card" style="margin-bottom:24px">
+  <div class="grid-2">
+    <div>
+      <div class="sec-title">The Research Case</div>
+      <div class="sec-sub">Why Presence needs a mascot — data-backed</div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="research-stat"><div class="research-num violet">4.5×</div><div class="research-label">DAU increase attributed to Duo the Owl — Duolingo</div></div>
+        <div class="research-stat"><div class="research-num blue">20–40%</div><div class="research-label">Higher user retention for apps with mascots vs. without</div></div>
+        <div class="research-stat"><div class="research-num green">+5%</div><div class="research-label">DAU lift from adding mascot to push notifications</div></div>
+        <div class="research-stat"><div class="research-num amber">∞</div><div class="research-label">Fan art, memes, organic brand amplification. Discord's Wumpus has more fan art than most indie games.</div></div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;">The loneliness app category has a unique stigma problem — users feel vulnerable using it. A mascot transforms the emotional frame: from "I'm using an app because I'm lonely" (shame) → "I'm connecting with Luma's world" (delight). The mascot creates a third party in the relationship that feels supportive, not transactional.</p>
+    </div>
+    <div>
+      <div class="sec-title">Luma's Identity</div>
+      <div class="sec-sub">A bioluminescent deep-sea creature</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:16px;">In the deep ocean, creatures evolved to make their own light — not just to see, but to signal: <em style="color:#e2e8f0;">I'm here. I'm safe. Come closer.</em> Luma found the surface world and discovered something strange: all these beings, surrounded by each other, somehow alone in the dark. So Luma does what comes naturally — glows.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div style="display:flex;gap:8px;"><span style="color:var(--aurora-blue);">✦</span><span><strong style="color:#fff;">Non-gendered</strong> — universally inclusive</span></div>
+        <div style="display:flex;gap:8px;"><span style="color:var(--aurora-green);">✦</span><span><strong style="color:#fff;">Bioluminescent</strong> — presence = light in darkness (on-brand)</span></div>
+        <div style="display:flex;gap:8px;"><span style="color:var(--aurora-violet);">✦</span><span><strong style="color:#fff;">Rounded, no sharp edges</strong> — maximum approachability</span></div>
+        <div style="display:flex;gap:8px;"><span style="color:var(--aurora-amber);">✦</span><span><strong style="color:#fff;">Small, slight</strong> — Luma supports, never dominates. User is the hero.</span></div>
+        <div style="display:flex;gap:8px;"><span style="color:var(--aurora-pink);">✦</span><span><strong style="color:#fff;">Never guilt-trips</strong> — anti-Duolingo aggressive notification pattern</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec-title">Luma's 7 Emotional States</div>
+<div class="sec-sub">Each state mapped to a Lottie animation + glow color</div>
+<div class="grid-4" style="margin-bottom:40px">
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(248,248,255,0.15);border:2px solid rgba(248,248,255,0.3);::after{background:rgba(248,248,255,0.1);}">🌕</div>
+    <div class="luma-state-name">IDLE</div>
+    <div style="font-size:12px;color:var(--aurora-blue);margin-bottom:4px;">Pearl White</div>
+    <div class="luma-state-desc">Gentle floating. Soft glow pulse. Default state on map.</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(255,215,0,0.15);border:2px solid rgba(255,215,0,0.4);">⭐</div>
+    <div class="luma-state-name">EXCITED</div>
+    <div style="font-size:12px;color:var(--aurora-amber);margin-bottom:4px;">Warm Amber</div>
+    <div class="luma-state-desc">Faster float, bigger pupils. Someone nearby is Present.</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(0,229,255,0.15);border:2px solid rgba(0,229,255,0.4);">🌊</div>
+    <div class="luma-state-name">WAVING</div>
+    <div style="font-size:12px;color:var(--aurora-blue);margin-bottom:4px;">Cyan</div>
+    <div class="luma-state-desc">Tentacle waves. Cyan ripple emanates. Wave sent/received.</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(124,77,255,0.2);border:2px solid rgba(124,77,255,0.5);">🔮</div>
+    <div class="luma-state-name">CONNECTING</div>
+    <div style="font-size:12px;color:var(--aurora-violet);margin-bottom:4px;">Violet</div>
+    <div class="luma-state-desc">Slow spiral orbit. Squinted eyes. Icebreaker loading.</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:linear-gradient(135deg,rgba(255,107,107,0.3),rgba(77,150,255,0.3));border:2px solid rgba(255,255,255,0.3);">🌈</div>
+    <div class="luma-state-name">CELEBRATING</div>
+    <div style="font-size:12px;color:var(--aurora-pink);margin-bottom:4px;">Full Aurora</div>
+    <div class="luma-state-desc">Aurora burst, 8 sparkles. Connection made!</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(84,110,122,0.2);border:2px solid rgba(84,110,122,0.4);">🌙</div>
+    <div class="luma-state-name">SLEEPY</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Dim Steel Blue</div>
+    <div class="luma-state-desc">Slow blink, dim glow. No one nearby. Empty state.</div>
+  </div>
+  <div class="glass-card luma-state">
+    <div class="luma-state-dot" style="background:rgba(206,147,216,0.15);border:2px solid rgba(206,147,216,0.4);">💜</div>
+    <div class="luma-state-name">GENTLE</div>
+    <div style="font-size:12px;color:var(--aurora-pink);margin-bottom:4px;">Soft Lavender</div>
+    <div class="luma-state-desc">Eyes closed, breathing. Quiet moments.</div>
+  </div>
+  <div class="glass-card" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20px 12px;">
+    <div><div style="font-size:32px;margin-bottom:8px;">✋</div><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">NEVER guilt-trips<br>NEVER demands<br>NEVER in chat UI</div></div>
+  </div>
+</div>
+
+<!-- LIQUID GLASS -->
+<div class="divider"><div class="divider-line"></div><h2>iOS 26 · Liquid Glass</h2><div class="divider-line"></div></div>
+
+<div class="glass-showcase">
+  <div class="sec-title">Apple's New Design Language — Fully Native</div>
+  <div class="sec-sub" style="margin-bottom:0">Presence is built iOS 26 first. Every navigation element, button, and overlay uses native Liquid Glass APIs — not custom blur.</div>
+  <div class="glass-demo">
+    <button class="glass-el pill">✨ Go Present</button>
+    <button class="glass-el">Wave 👋</button>
+    <button class="glass-el icon">⚙️</button>
+    <button class="glass-el icon">←</button>
+    <div class="glass-el" style="background:rgba(124,77,255,0.15);border-color:rgba(124,77,255,0.4);">2h 41m remaining</div>
+    <div class="glass-el" style="background:rgba(29,233,182,0.1);border-color:rgba(29,233,182,0.3);">47 people glowing</div>
+  </div>
+  <div class="glass-code"><span class="code-com">// GlassTokens.swift — single source of truth</span>
+<span class="code-key">enum</span> GlassTokens {
+    <span class="code-key">enum</span> Radius {
+        <span class="code-key">static let</span> card: CGFloat = <span class="code-val">28</span>
+        <span class="code-key">static let</span> pill: CGFloat = <span class="code-val">999</span>
+        <span class="code-key">static let</span> sheet: CGFloat = <span class="code-val">34</span>
+    }
+}
+
+<span class="code-com">// Primary CTA — the "Go Present" button</span>
+GlassPillButton(<span class="code-str">"Go Present"</span>) { presenceService.activate() }
+    .<span class="code-key">glassEffect</span>(<span class="code-val">.regular</span>, in: Capsule())
+
+<span class="code-com">// Always gate for iOS < 26 fallback</span>
+<span class="code-key">if</span> #available(iOS <span class="code-val">26.0</span>, *) {
+    view.glassEffect()
+} <span class="code-key">else</span> {
+    view.background(.regularMaterial)
+}</div>
+</div>
+
+<div class="glass-card" style="margin-bottom:40px">
+  <div class="sec-title">Liquid Glass Rules — What Presence Follows</div>
+  <div class="grid-2" style="margin-top:16px">
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-green);margin-bottom:12px;letter-spacing:0.1em;">✓ USES GLASS</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <span>→ Tab bar & navigation bar</span>
+        <span>→ All CTA buttons (Go Present, Wave)</span>
+        <span>→ Bottom sheets & modals</span>
+        <span>→ Venue info overlays</span>
+        <span>→ Status chips (timer, count)</span>
+        <span>→ Map control buttons</span>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:#f87171;margin-bottom:12px;letter-spacing:0.1em;">✗ NO GLASS</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);">
+        <span>→ Map tiles (content layer)</span>
+        <span>→ Presence dot markers (custom glow)</span>
+        <span>→ Text content areas</span>
+        <span>→ List/scroll content</span>
+        <span>→ Stacked on other glass</span>
+        <span>→ Full-screen backgrounds</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLAUDE API -->
+<div class="divider"><div class="divider-line"></div><h2>AI · Claude Opus 4.7</h2><div class="divider-line"></div></div>
+
+<div class="glass-card" style="margin-bottom:24px">
+  <div class="sec-title">Icebreaker Engine</div>
+  <div class="sec-sub">The core differentiator — powered by Opus 4.7</div>
+  <div class="api-box">
+    <div class="api-label">SYSTEM PROMPT (production)</div>
+    <div style="font-size:13px;color:#94a3b8;font-style:italic;line-height:1.7;">"You are the icebreaker engine for Presence. Generate ONE perfect conversation starter for two people who are about to meet. Rules: max 2 sentences, warm (not creepy), specific to venue/time/bios, never romantic, never reference the app or AI, end with an open question when possible. Output: only the icebreaker text."</div>
+  </div>
+  <div class="api-box" style="margin-top:12px">
+    <div class="api-label">EXAMPLE OUTPUT — Café, 9am Saturday, Bio A: "morning coffee runs" / Bio B: "writes code always"</div>
+    <div style="font-size:15px;color:#fff;font-style:italic;line-height:1.6;">"Saturday mornings here have a whole different energy — are you the kind of person who actually codes on weekends or is this your permission slip to not?"</div>
+  </div>
+  <div class="grid-4" style="margin-top:20px">
+    <div class="research-stat"><div class="research-num violet">claude-opus-4-7</div><div class="research-label">Model — never on client</div></div>
+    <div class="research-stat"><div class="research-num blue">~800ms</div><div class="research-label">P95 latency — masked by Luma animation</div></div>
+    <div class="research-stat"><div class="research-num green">200</div><div class="research-label">Max output tokens — enforced</div></div>
+    <div class="research-stat"><div class="research-num amber">$0.0003</div><div class="research-label">Per icebreaker at standard pricing</div></div>
+  </div>
+</div>
+
+<!-- TECH STACK -->
+<div class="divider"><div class="divider-line"></div><h2>Tech Stack</h2><div class="divider-line"></div></div>
+
+<div class="grid-2" style="margin-bottom:40px">
+  <div class="glass-card">
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-blue);letter-spacing:0.15em;margin-bottom:16px;">iOS APP</div>
+    <div class="tech-row"><div><div class="tech-name">Swift 6 · SwiftUI</div><div class="tech-desc">Strict concurrency, @MainActor ViewModels, iOS 26 target</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">MapKit (iOS 26)</div><div class="tech-desc">Native maps with Liquid Glass overlays, custom presence dot annotations</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">CoreLocation</div><div class="tech-desc">whenInUse only, ±50m privacy reduction before any server transmission</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">Lottie iOS 4.x</div><div class="tech-desc">Luma mascot animations — preloaded at app launch</div></div></div>
+    <div class="tech-row" style="border:none"><div><div class="tech-name">RevenueCat</div><div class="tech-desc">Presence+ subscription — familiar from Dynasty Manager</div></div></div>
+  </div>
+  <div class="glass-card">
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-violet);letter-spacing:0.15em;margin-bottom:16px;">BACKEND</div>
+    <div class="tech-row"><div><div class="tech-name">Node.js 22 · TypeScript</div><div class="tech-desc">Express + Socket.io for real-time presence events</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">Supabase + PostGIS</div><div class="tech-desc">PostgreSQL with geography types for radius queries. Real-time subscriptions.</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">Supabase Auth</div><div class="tech-desc">Phone number auth — no email, reduces friction by ~40%</div></div></div>
+    <div class="tech-row"><div><div class="tech-name">Anthropic API</div><div class="tech-desc">Backend-only — Opus 4.7 icebreaker generation, API key never in client</div></div></div>
+    <div class="tech-row" style="border:none"><div><div class="tech-name">PostHog · Sentry</div><div class="tech-desc">Privacy-first analytics + crash monitoring</div></div></div>
+  </div>
+</div>
+
+<!-- MONETIZATION -->
+<div class="divider"><div class="divider-line"></div><h2>Monetization</h2><div class="divider-line"></div></div>
+
+<div class="grid-3" style="margin-bottom:40px">
+  <div class="pricing-card free">
+    <div class="pricing-tier" style="color:var(--muted);">FREE TIER</div>
+    <div class="pricing-name">Presence</div>
+    <div class="pricing-price" style="color:var(--muted);">$0</div>
+    <ul class="pricing-features" style="color:#94a3b8;">
+      <li>3 presences per week</li>
+      <li>Standard icebreakers</li>
+      <li>Wave system</li>
+      <li>10-min chat</li>
+      <li>Luma idle + excited states</li>
+    </ul>
+  </div>
+  <div class="pricing-card premium">
+    <div class="pricing-tier" style="color:var(--aurora-violet);">PRESENCE+</div>
+    <div class="pricing-name">Presence+</div>
+    <div class="pricing-price violet">$6.99<span style="font-size:16px;font-weight:400;color:var(--muted);">/mo</span></div>
+    <ul class="pricing-features" style="color:#c4b5fd;">
+      <li>Unlimited presences</li>
+      <li>Enhanced icebreakers</li>
+      <li>See nearby count before activating</li>
+      <li>Luma full emotion spectrum</li>
+      <li>Exclusive seasonal Luma skins</li>
+      <li>Quiet Hours auto-schedule</li>
+    </ul>
+  </div>
+  <div class="pricing-card b2b">
+    <div class="pricing-tier" style="color:var(--aurora-green);">B2B PARTNER</div>
+    <div class="pricing-name">Venue Hub</div>
+    <div class="pricing-price green">$49<span style="font-size:16px;font-weight:400;color:var(--muted);">/mo</span></div>
+    <ul class="pricing-features" style="color:#a7f3d0;">
+      <li>Venue highlighted on map</li>
+      <li>Connection analytics (anon.)</li>
+      <li>Custom Luma venue glow color</li>
+      <li>"Presence Hub" badge</li>
+      <li>Priority visibility to users</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ROADMAP -->
+<div class="divider"><div class="divider-line"></div><h2>Development Roadmap</h2><div class="divider-line"></div></div>
+
+<div class="timeline" style="margin-bottom:40px">
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(124,77,255,0.3);border-color:var(--aurora-violet);">🏗️</div>
+    <div class="phase-tag" style="color:var(--aurora-violet);">PHASE 0 · WEEKS 1–2</div>
+    <div class="phase-title">Foundation</div>
+    <div class="phase-weeks">Xcode 26 setup → Design system → Auth → Backend skeleton</div>
+    <div class="phase-tasks">
+      <div class="phase-task">GlassTokens.swift + full Liquid Glass design system</div>
+      <div class="phase-task">Supabase project + PostGIS schema migrations</div>
+      <div class="phase-task">Phone auth flow (onboarding with Luma placeholder)</div>
+      <div class="phase-task">Node.js backend + Socket.io deployed</div>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(79,195,247,0.3);border-color:var(--aurora-blue);">🗺️</div>
+    <div class="phase-tag" style="color:var(--aurora-blue);">PHASE 1 · WEEKS 3–5</div>
+    <div class="phase-title">Core Loop</div>
+    <div class="phase-weeks">Map + Location + Presence + WebSocket + Wave MVP</div>
+    <div class="phase-tasks">
+      <div class="phase-task">MapView with Liquid Glass controls + glowing presence dots</div>
+      <div class="phase-task">LocationService actor + privacy reduction (±50m)</div>
+      <div class="phase-task">PresenceService — toggle, 3h expiry, real-time WebSocket sync</div>
+      <div class="phase-task">Wave system — tap dot → sheet → wave → notification → response</div>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(29,233,182,0.3);border-color:var(--aurora-green);">🤖</div>
+    <div class="phase-tag" style="color:var(--aurora-green);">PHASE 2 · WEEKS 6–8</div>
+    <div class="phase-title">AI + Luma</div>
+    <div class="phase-weeks">Claude Opus 4.7 icebreakers + full Luma mascot integration</div>
+    <div class="phase-tasks">
+      <div class="phase-task">Icebreaker backend — Opus 4.7 API + fallback library</div>
+      <div class="phase-task">LumaView + LumaState machine + all 7 Lottie animations</div>
+      <div class="phase-task">Timed chat window (10-minute countdown, locks on expiry)</div>
+      <div class="phase-task">Connection milestones + Luma celebration animations</div>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(255,184,77,0.3);border-color:var(--aurora-amber);">💰</div>
+    <div class="phase-tag" style="color:var(--aurora-amber);">PHASE 3 · WEEKS 9–10</div>
+    <div class="phase-title">Monetization</div>
+    <div class="phase-weeks">RevenueCat + Paywall + Free tier enforcement</div>
+    <div class="phase-tasks">
+      <div class="phase-task">RevenueCat dashboard + App Store Connect products</div>
+      <div class="phase-task">PaywallView — Luma hero, monthly/annual toggle, 7-day trial</div>
+      <div class="phase-task">Free tier counter (3 presences/week tracking)</div>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(244,143,177,0.3);border-color:var(--aurora-pink);">🛡️</div>
+    <div class="phase-tag" style="color:var(--aurora-pink);">PHASE 4 · WEEKS 11–12</div>
+    <div class="phase-title">Safety + Polish</div>
+    <div class="phase-weeks">Block/report + Accessibility + Final UX pass</div>
+    <div class="phase-tasks">
+      <div class="phase-task">Block/report — always one tap, every surface</div>
+      <div class="phase-task">Full VoiceOver + Dynamic Type + Reduce Motion support</div>
+      <div class="phase-task">App icon (Luma face), launch screen, haptic feedback audit</div>
+    </div>
+  </div>
+  <div class="phase">
+    <div class="phase-dot" style="background:rgba(124,77,255,0.3);border-color:var(--aurora-violet);">🚀</div>
+    <div class="phase-tag" style="color:var(--aurora-violet);">PHASE 5–6 · WEEKS 13–15</div>
+    <div class="phase-title">Beta → Launch</div>
+    <div class="phase-weeks">TestFlight → City launch → App Store</div>
+    <div class="phase-tasks">
+      <div class="phase-task">TestFlight: 100 users in target city (Austin or Denver)</div>
+      <div class="phase-task">Venue seeding: QR codes at 20 coffee shops + co-working spaces</div>
+      <div class="phase-task">App Store submission + "Luma is live" social reveal</div>
+      <div class="phase-task">Press: loneliness epidemic angle → local + tech media</div>
+    </div>
+  </div>
+</div>
+
+<!-- FILES -->
+<div class="divider"><div class="divider-line"></div><h2>Claude Code Files</h2><div class="divider-line"></div></div>
+
+<div class="glass-card" style="margin-bottom:40px">
+  <div class="sec-title">Project Documentation Suite</div>
+  <div class="sec-sub">All files created — read by Opus 4.7 at each session start</div>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(124,77,255,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">📋</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-violet);font-size:13px;margin-bottom:4px;">CLAUDE.md</div><div style="font-size:13px;color:var(--muted);">Master context file. Complete tech stack, design system rules, Luma spec, AI integration, DB schema, privacy rules, monetization, code standards. Read first, every session.</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(79,195,247,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">🎯</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-blue);font-size:13px;margin-bottom:4px;">TASK.md</div><div style="font-size:13px;color:var(--muted);">Live work tracker. Current sprint tasks, backlog (prioritized), active bugs, session notes. Updated at END of every session.</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(29,233,182,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">🧠</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-green);font-size:13px;margin-bottom:4px;">LEARNINGS.md</div><div style="font-size:13px;color:var(--muted);">Accumulated knowledge base. iOS 26 gotchas, Supabase SQL patterns, Claude API quirks, RevenueCat notes, privacy architecture decisions. The memory of the project.</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,184,77,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">📄</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-amber);font-size:13px;margin-bottom:4px;">PRD.md</div><div style="font-size:13px;color:var(--muted);">Full product requirements. Problem statement, personas, complete user journeys, feature specs, non-functional requirements, success metrics, launch strategy.</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(244,143,177,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">🎭</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-pink);font-size:13px;margin-bottom:4px;">LUMA_BRIEF.md</div><div style="font-size:13px;color:var(--muted);">Complete mascot design brief. Research rationale, identity spec, all 7 animation states with Lottie specs, size variants, placement rules, social strategy, implementation checklist.</div></div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(124,77,255,0.04);">
+      <div style="font-family:'DM Mono',monospace;font-size:20px;">🗺️</div>
+      <div><div style="font-family:'DM Mono',monospace;color:var(--aurora-violet);font-size:13px;margin-bottom:4px;">ROADMAP.md</div><div style="font-size:13px;color:var(--muted);">75-day task-level roadmap. Every phase, every day, every specific task. Risk register. Post-launch roadmap to month 6+.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ASO -->
+<div class="divider"><div class="divider-line"></div><h2>App Store Strategy</h2><div class="divider-line"></div></div>
+
+<div class="glass-card" style="margin-bottom:40px">
+  <div class="grid-2">
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-blue);letter-spacing:0.15em;margin-bottom:12px;">APP NAME</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">Presence — Meet Nearby</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-violet);letter-spacing:0.15em;margin-bottom:12px;margin-top:20px;">SUBTITLE (30 chars)</div>
+      <div style="font-size:14px;color:#94a3b8;margin-bottom:20px;">Real connections, real life</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-green);letter-spacing:0.15em;margin-bottom:12px;">CATEGORY</div>
+      <div style="font-size:14px;color:#94a3b8;">Social Networking (Primary)<br>Lifestyle (Secondary)</div>
+    </div>
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-amber);letter-spacing:0.15em;margin-bottom:12px;">ASO KEYWORDS</div>
+      <div>
+        <span class="aso-keyword">make friends</span>
+        <span class="aso-keyword">meet people nearby</span>
+        <span class="aso-keyword">loneliness</span>
+        <span class="aso-keyword">social app</span>
+        <span class="aso-keyword">new city friends</span>
+        <span class="aso-keyword">connection</span>
+        <span class="aso-keyword">social anxiety</span>
+        <span class="aso-keyword">friend finder</span>
+        <span class="aso-keyword">real life social</span>
+        <span class="aso-keyword">remote work friends</span>
+        <span class="aso-keyword">platonic</span>
+        <span class="aso-keyword">community</span>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--aurora-pink);letter-spacing:0.15em;margin-top:20px;margin-bottom:12px;">AGE RATING</div>
+      <div style="font-size:14px;color:#94a3b8;">17+ (chat between strangers)</div>
+    </div>
+  </div>
+</div>
+
+<!-- METRICS -->
+<div class="divider"><div class="divider-line"></div><h2>Success Metrics</h2><div class="divider-line"></div></div>
+
+<div class="grid-4" style="margin-bottom:60px">
+  <div class="glass-card" style="text-align:center">
+    <div class="stat-num violet">Real Connections</div>
+    <div class="stat-label" style="margin-top:8px;">North Star — mutual waves per week</div>
+  </div>
+  <div class="glass-card" style="text-align:center">
+    <div class="stat-num blue">40%</div>
+    <div class="stat-label">Target DAU/MAU — Duolingo benchmark</div>
+  </div>
+  <div class="glass-card" style="text-align:center">
+    <div class="stat-num green">35%</div>
+    <div class="stat-label">Target wave accept rate by month 6</div>
+  </div>
+  <div class="glass-card" style="text-align:center">
+    <div class="stat-num amber">6%</div>
+    <div class="stat-label">Target free → Presence+ conversion</div>
+  </div>
+</div>
+
+<footer>
+  <div style="margin-bottom:12px;">Presence — Full App Report | April 2026</div>
+  <div>Claude Opus 4.7 · iOS 26 Liquid Glass · Supabase + PostGIS · RevenueCat · Lottie</div>
+  <div style="margin-top:8px;font-size:10px;">All Claude Code files: CLAUDE.md · TASK.md · LEARNINGS.md · PRD.md · LUMA_BRIEF.md · ROADMAP.md</div>
+</footer>
+
+</div>
+</body>
+</html>
