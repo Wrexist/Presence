@@ -1,7 +1,7 @@
 //  PresenceApp
 //  AppCoordinator.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — adds deep-link state + waveCompose modal.
+//  Updated: 2026-04-26 — adds celebration + chat modals, real Wave model.
 //  Purpose: Root navigation state. Owns the top-level route, the current
 //           tab, any presented modal, deep-link payloads coming from push
 //           notifications, and the persisted current user. Views read/write
@@ -20,16 +20,30 @@ final class AppCoordinator {
 
     enum Modal: Equatable, Identifiable {
         case goPresent
-        case wave(IncomingWave)
+        case waveReceived(Wave)
         case waveCompose(PresentUser)
+        case celebration(CelebrationContext)
+        case chat(roomId: UUID, otherUsername: String)
 
         var id: String {
             switch self {
             case .goPresent:                  return "goPresent"
-            case .wave(let w):                return "wave-\(w.id)"
+            case .waveReceived(let w):        return "wave-\(w.id)"
             case .waveCompose(let target):    return "waveCompose-\(target.id)"
+            case .celebration(let ctx):       return "celebration-\(ctx.waveId)"
+            case .chat(let roomId, _):        return "chat-\(roomId.uuidString)"
             }
         }
+    }
+
+    /// Snapshot passed into `CelebrationView`. Equatable so the modal
+    /// case stays Equatable.
+    struct CelebrationContext: Equatable, Sendable {
+        let waveId: UUID
+        let otherUsername: String
+        let connectionCount: Int?
+        let chatRoomId: UUID?
+        let chatEndsAt: Date?
     }
 
     /// Pending action handed off from a push-notification tap. Views consume
@@ -45,9 +59,6 @@ final class AppCoordinator {
     var deepLink: DeepLink?
     var currentUser: User?
 
-    /// Called once on launch with the live AuthService. Resolves a session
-    /// from Keychain if one exists and routes accordingly. Falls back to
-    /// the onboarding flow on any failure.
     func boot(auth: AuthService) async {
         let restored = await auth.restoreSession()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {

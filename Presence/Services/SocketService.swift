@@ -27,12 +27,6 @@ final class SocketService {
 
     private(set) var state: ConnectionState = .disconnected
 
-    /// Async stream of presence events. Consumers iterate with
-    /// `for await event in service.events { ... }`. Buffer is unbounded
-    /// since the volume is small (handful of events per minute) and we
-    /// never want to drop a leave event.
-    let events: AsyncStream<PresenceEvent>
-
     // MARK: - Dependencies
 
     private let baseURL: URL
@@ -40,7 +34,13 @@ final class SocketService {
 
     private var manager: SocketManager?
     private var socket: SocketIOClient?
-    private var continuation: AsyncStream<PresenceEvent>.Continuation?
+
+    /// One continuation per active consumer — events are fanned out to all
+    /// of them. AsyncStream is single-consumer, so views that need to react
+    /// to socket events (MapViewModel, WavesViewModel, ChatViewModel) each
+    /// get their own stream via `events()`.
+    private var continuations: [UUID: AsyncStream<PresenceEvent>.Continuation] = [:]
+
     private var pendingSubscribe: (lat: Double, lng: Double)?
 
     private let decoder: JSONDecoder = {
@@ -52,15 +52,33 @@ final class SocketService {
     init(baseURL: URL, auth: AuthService) {
         self.baseURL = baseURL
         self.auth = auth
-        var continuationRef: AsyncStream<PresenceEvent>.Continuation?
-        self.events = AsyncStream(bufferingPolicy: .unbounded) { c in
-            continuationRef = c
-        }
-        self.continuation = continuationRef
     }
 
     deinit {
-        continuation?.finish()
+        for c in continuations.values { c.finish() }
+    }
+
+    /// Returns a fresh AsyncStream that receives every subsequent event.
+    /// The returned stream cleans up its continuation automatically when
+    /// the consumer's iterating task is cancelled.
+    func events() -> AsyncStream<PresenceEvent> {
+        AsyncStream(bufferingPolicy: .unbounded) { [weak self] continuation in
+            guard let self else {
+                continuation.finish()
+                return
+            }
+            let id = UUID()
+            self.continuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.continuations.removeValue(forKey: id)
+                }
+            }
+        }
+    }
+
+    private func yieldAll(_ event: PresenceEvent) {
+        for c in continuations.values { c.yield(event) }
     }
 
     // MARK: - Lifecycle
@@ -118,6 +136,16 @@ final class SocketService {
         }
     }
 
+    /// Joins the chat room. Server verifies the caller is a participant
+    /// before honoring the join — non-participants are silently ignored.
+    func subscribeChat(roomId: UUID) {
+        socket?.emit("chat:subscribe", ["roomId": roomId.uuidString])
+    }
+
+    func unsubscribeChat(roomId: UUID) {
+        socket?.emit("chat:unsubscribe", ["roomId": roomId.uuidString])
+    }
+
     // MARK: - Handlers
 
     private func attachHandlers(to socket: SocketIOClient) {
@@ -164,14 +192,35 @@ final class SocketService {
                         expiresAt: payload.expiresAt
                     )
                 )
-                self.continuation?.yield(event)
+                self.yieldAll(event)
             }
         }
 
         socket.on("presence_left") { [weak self] data, _ in
             guard let self, let dict = data.first as? [String: Any] else { return }
             if let payload = self.decode(LeftDTO.self, from: dict) {
-                self.continuation?.yield(.left(id: payload.id))
+                self.yieldAll(.left(id: payload.id))
+            }
+        }
+
+        socket.on("wave_received") { [weak self] data, _ in
+            guard let self, let dict = data.first as? [String: Any] else { return }
+            if let payload = self.decode(PresenceEvent.WaveReceivedPayload.self, from: dict) {
+                self.yieldAll(.waveReceived(payload))
+            }
+        }
+
+        socket.on("wave_mutual") { [weak self] data, _ in
+            guard let self, let dict = data.first as? [String: Any] else { return }
+            if let payload = self.decode(PresenceEvent.WaveMutualPayload.self, from: dict) {
+                self.yieldAll(.waveMutual(payload))
+            }
+        }
+
+        socket.on("chat_message") { [weak self] data, _ in
+            guard let self, let dict = data.first as? [String: Any] else { return }
+            if let message = self.decode(ChatMessage.self, from: dict) {
+                self.yieldAll(.chatMessage(message))
             }
         }
     }

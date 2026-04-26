@@ -52,6 +52,10 @@ export function attachWebSocket(http: HttpServer, logger: Logger): IOServer {
   io.on("connection", (socket: Socket) => {
     logger.info({ socketId: socket.id, userId: socket.userId }, "socket connected");
 
+    // Auto-join the per-user inbox room so wave_received / wave_mutual
+    // events reach this socket regardless of which zone it's subscribed to.
+    if (socket.userId) socket.join(`user:${socket.userId}`);
+
     socket.on("disconnect", (reason) => {
       logger.info({ socketId: socket.id, reason }, "socket disconnected");
     });
@@ -66,8 +70,6 @@ export function attachWebSocket(http: HttpServer, logger: Logger): IOServer {
       const rooms = geohashAndNeighbors(center).map((g) => `zone:${g}`);
       const previous = Array.from(socket.rooms).filter((r) => r.startsWith("zone:"));
 
-      // Leave any previously joined zones first so a re-subscribe doesn't
-      // accumulate rooms (and therefore broadcast fan-out) over time.
       for (const r of previous) {
         if (!rooms.includes(r)) socket.leave(r);
       }
@@ -84,6 +86,32 @@ export function attachWebSocket(http: HttpServer, logger: Logger): IOServer {
       for (const room of Array.from(socket.rooms)) {
         if (room.startsWith("zone:")) socket.leave(room);
       }
+    });
+
+    // Chat rooms — only join if the caller is a participant of the room.
+    // Without this check, anyone with a roomId could lurk on someone else's
+    // chat. Lookup is one read; over-engineering with caching can come later.
+    socket.on("chat:subscribe", async (payload: { roomId?: unknown }) => {
+      const roomId = typeof payload?.roomId === "string" ? payload.roomId : null;
+      if (!roomId || !socket.userId) return;
+      const supabase = getSupabase();
+      if (!supabase) return;
+
+      const { data } = await supabase
+        .from("chat_rooms")
+        .select("user_a, user_b")
+        .eq("id", roomId)
+        .single();
+      const room = data as { user_a: string; user_b: string } | null;
+      if (!room) return;
+      if (room.user_a !== socket.userId && room.user_b !== socket.userId) return;
+      socket.join(`chat:${roomId}`);
+    });
+
+    socket.on("chat:unsubscribe", (payload: { roomId?: unknown }) => {
+      const roomId = typeof payload?.roomId === "string" ? payload.roomId : null;
+      if (!roomId) return;
+      socket.leave(`chat:${roomId}`);
     });
   });
 

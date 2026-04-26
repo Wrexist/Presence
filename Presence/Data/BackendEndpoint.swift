@@ -66,6 +66,14 @@ struct BackendEndpoint: Sendable {
         BackendEndpoint(.get, "/api/waves")
     }
 
+    static func loadChat(roomId: UUID) -> BackendEndpoint {
+        BackendEndpoint(.get, "/api/chat/\(roomId.uuidString)")
+    }
+
+    static func sendChatMessage(roomId: UUID) -> BackendEndpoint {
+        BackendEndpoint(.post, "/api/chat/\(roomId.uuidString)/messages")
+    }
+
     static func registerPushToken() -> BackendEndpoint {
         BackendEndpoint(.post, "/api/users/me/push-token")
     }

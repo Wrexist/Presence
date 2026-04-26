@@ -113,7 +113,7 @@ final class MapViewModel {
     // MARK: - Stream
 
     private func consumeStream() async {
-        for await event in socket.events {
+        for await event in socket.events() {
             if Task.isCancelled { break }
             apply(event)
         }
@@ -122,9 +122,6 @@ final class MapViewModel {
     private func apply(_ event: PresenceEvent) {
         switch event {
         case .joined(let payload):
-            // The event lacks username/bio. If we already have a richer
-            // record from the REST hydrate, keep it; otherwise insert a
-            // stub the next hydrate will fill in.
             if let existing = presences[payload.id] {
                 presences[payload.id] = PresentUser(
                     id: existing.id,
@@ -142,6 +139,10 @@ final class MapViewModel {
 
         case .left(let id):
             presences.removeValue(forKey: id)
+
+        case .waveReceived, .waveMutual, .chatMessage:
+            // Wave + chat events are handled by WavesViewModel / ChatViewModel.
+            break
         }
     }
 

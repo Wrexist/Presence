@@ -9,6 +9,7 @@ import pinoHttp from "pino-http";
 import pino, { type Logger } from "pino";
 
 import { config } from "./config.js";
+import { chatRouter } from "./routes/chat.js";
 import { healthRouter } from "./routes/health.js";
 import { icebreakerRouter } from "./routes/icebreaker.js";
 import { presenceRouter } from "./routes/presence.js";
@@ -35,6 +36,7 @@ export function createApp(logger: Logger = pino({ level: config.LOG_LEVEL })): e
   app.use(pinoHttp({ logger }));
 
   app.use("/health", healthRouter);
+  app.use("/api/chat", chatRouter);
   app.use("/api/icebreaker", icebreakerRouter);
   app.use("/api/presence", presenceRouter);
   app.use("/api/users", usersRouter);

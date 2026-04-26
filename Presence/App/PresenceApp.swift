@@ -33,7 +33,12 @@ struct PresenceApp: App {
                         switch newRoute {
                         case .main:
                             await services.socket.connect()
+                            // Start the shared WavesViewModel so mutual
+                            // events trigger the celebration regardless of
+                            // which tab is on screen.
+                            await services.wavesViewModel.start()
                         case .onboarding:
+                            services.wavesViewModel.stop()
                             services.socket.disconnect()
                         case .launching:
                             break
@@ -75,12 +80,37 @@ private struct RootView: View {
             GoPresentView()
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
-        case .wave(let wave):
-            WaveReceivedView(wave: wave)
+        case .waveReceived(let wave):
+            WaveReceivedView(wave: wave, viewModel: services.wavesViewModel)
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
         case .waveCompose(let target):
             WaveComposeView(target: target)
+                .presentationDetents([.large])
+                .presentationBackground(.clear)
+        case .celebration(let context):
+            CelebrationView(
+                otherUsername: context.otherUsername,
+                connectionCount: context.connectionCount,
+                chatRoomId: context.chatRoomId,
+                chatEndsAt: context.chatEndsAt,
+                onOpenChat: {
+                    guard let roomId = context.chatRoomId else { return }
+                    let other = context.otherUsername
+                    // Dismiss celebration, then re-present as chat after a
+                    // brief beat so SwiftUI animates a clean swap rather
+                    // than stacking two sheet transitions.
+                    coordinator.dismissModal()
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 350_000_000)
+                        coordinator.present(.chat(roomId: roomId, otherUsername: other))
+                    }
+                }
+            )
+            .presentationDetents([.large])
+            .presentationBackground(.clear)
+        case .chat(let roomId, let otherUsername):
+            ChatView(roomId: roomId, otherUsername: otherUsername)
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
         }
@@ -98,6 +128,7 @@ private struct LaunchView: View {
 
 private struct MainTabShell: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(ServiceContainer.self) private var services
 
     var body: some View {
         @Bindable var bindable = coordinator
@@ -122,13 +153,34 @@ private struct MainTabShell: View {
         .onChange(of: coordinator.deepLink) { _, link in
             // Push-tap deep-links route here. We jump to the Waves tab so
             // the user lands somewhere the wave is visible — the WavesView
-            // hydration in C4 will surface the specific wave.
+            // hydration surfaces the specific wave.
             guard let link else { return }
             switch link {
             case .waveReceived, .waveMutual:
                 coordinator.tab = .waves
             }
             coordinator.consumeDeepLink()
+        }
+        // Celebration triggers globally — mutual events happen regardless
+        // of which tab is on screen, so we listen at the shell level.
+        .onChange(of: services.wavesViewModel.pendingMutual) { _, payload in
+            guard let payload else { return }
+            let me = coordinator.currentUser?.id
+            let otherId = (payload.senderId == me) ? payload.receiverId : payload.senderId
+            let knownWave = services.wavesViewModel.incoming.first(where: { $0.id == payload.waveId })
+                ?? services.wavesViewModel.outgoing.first(where: { $0.id == payload.waveId })
+            let username = knownWave?.other?.username
+                ?? (knownWave?.other?.id == otherId ? knownWave?.other?.username : nil)
+                ?? "Someone"
+
+            coordinator.present(.celebration(.init(
+                waveId: payload.waveId,
+                otherUsername: username,
+                connectionCount: payload.connectionCount,
+                chatRoomId: payload.chatRoomId,
+                chatEndsAt: payload.chatEndsAt
+            )))
+            services.wavesViewModel.pendingMutual = nil
         }
     }
 }

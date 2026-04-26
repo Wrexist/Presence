@@ -81,11 +81,11 @@
 ### Sprint 2 — Wave System
 - [x] TASK-012: Tap-a-dot → wave preview sheet — `WaveComposeView` (sender side), wired off `HomeView` dot annotations
 - [x] TASK-013: Claude API icebreaker generation — backend route + iOS request flow (`/api/icebreaker` now JWT-authed)
-- [ ] TASK-014: WaveView — show icebreaker + wave button (existing `WaveReceivedView` still uses placeholder data; C4 wires it to `/api/waves`)
+- [x] TASK-014: WaveView — `WaveReceivedView` now driven by the live `Wave` model + `WavesViewModel`
 - [x] TASK-015: Wave notification — backend push stub + iOS `NotificationService` + `AppDelegate` deep-link routing (real APNs send deferred to E6)
 - [x] TASK-016: Wave response flow (accept/decline) — backend `POST /api/waves/:id/respond` with mutual detection + connection insert
-- [ ] TASK-017: 10-minute chat window (ChatView with countdown) — C5
-- [ ] TASK-018: Connection recording + Luma celebration — backend records connection on mutual; iOS celebration UI is C6
+- [x] TASK-017: 10-minute chat window — `ChatView` + `ChatViewModel` + `chat_rooms` / `chat_messages` migration; server enforces ends_at
+- [x] TASK-018: Connection recording + Luma celebration — `CelebrationView` triggered globally on `wave_mutual`; milestone copy at 1/5/10/25
 
 ### Sprint 3 — Monetization & Polish
 - [ ] TASK-019: RevenueCat integration

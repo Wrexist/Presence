@@ -1,7 +1,8 @@
 //  PresenceApp
 //  ServiceContainer.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — adds NotificationService.
+//  Updated: 2026-04-26 — hoists WavesViewModel so it's shared across the
+//                        Waves tab and the wave-received modal.
 //  Purpose: Lightweight DI container. Holds service singletons that views
 //           read via @Environment. Use .live() in app, .preview() in #Previews.
 
@@ -19,6 +20,9 @@ final class ServiceContainer {
     let socket: SocketService
     let notifications: NotificationService
 
+    /// Shared waves state — the tab and the modal both observe this.
+    let wavesViewModel: WavesViewModel
+
     init(
         supabase: SupabaseClient,
         auth: AuthService,
@@ -26,7 +30,8 @@ final class ServiceContainer {
         backend: BackendClient,
         presence: PresenceService,
         socket: SocketService,
-        notifications: NotificationService
+        notifications: NotificationService,
+        wavesViewModel: WavesViewModel
     ) {
         self.supabase = supabase
         self.auth = auth
@@ -35,6 +40,7 @@ final class ServiceContainer {
         self.presence = presence
         self.socket = socket
         self.notifications = notifications
+        self.wavesViewModel = wavesViewModel
     }
 
     static func live() -> ServiceContainer {
@@ -45,6 +51,7 @@ final class ServiceContainer {
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         let notifications = NotificationService(backend: backend)
+        let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -52,7 +59,8 @@ final class ServiceContainer {
             backend: backend,
             presence: presence,
             socket: socket,
-            notifications: notifications
+            notifications: notifications,
+            wavesViewModel: wavesViewModel
         )
     }
 
@@ -64,6 +72,7 @@ final class ServiceContainer {
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         let notifications = NotificationService(backend: backend)
+        let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -71,7 +80,8 @@ final class ServiceContainer {
             backend: backend,
             presence: presence,
             socket: socket,
-            notifications: notifications
+            notifications: notifications,
+            wavesViewModel: wavesViewModel
         )
     }
 }

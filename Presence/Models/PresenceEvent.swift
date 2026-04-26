@@ -10,6 +10,9 @@ import Foundation
 enum PresenceEvent: Sendable, Equatable {
     case joined(JoinedPayload)
     case left(id: UUID)
+    case waveReceived(WaveReceivedPayload)
+    case waveMutual(WaveMutualPayload)
+    case chatMessage(ChatMessage)
 
     struct JoinedPayload: Sendable, Equatable, Codable {
         let id: UUID
@@ -19,10 +22,6 @@ enum PresenceEvent: Sendable, Equatable {
         let venueName: String?
         let expiresAt: Date
 
-        /// Maps a `presence_joined` payload onto the same `PresentUser` shape
-        /// the REST `/nearby` endpoint returns. Username/bio aren't carried
-        /// on the realtime event — we fill in placeholders that the UI can
-        /// replace via a follow-up REST hydrate when needed.
         func toPresentUser(username: String = "", bio: String? = nil) -> PresentUser {
             PresentUser(
                 id: id,
@@ -39,5 +38,26 @@ enum PresenceEvent: Sendable, Equatable {
 
     struct LeftPayload: Sendable, Equatable, Codable {
         let id: UUID
+    }
+
+    struct WaveReceivedPayload: Sendable, Equatable, Codable {
+        let id: UUID
+        let senderId: UUID
+        let senderUsername: String
+        let senderBio: String?
+        let icebreaker: String
+        let sentAt: Date
+        let expiresAt: Date
+    }
+
+    struct WaveMutualPayload: Sendable, Equatable, Codable {
+        let waveId: UUID
+        let senderId: UUID
+        let receiverId: UUID
+        let respondedAt: Date
+        let chatRoomId: UUID?
+        let chatStartedAt: Date?
+        let chatEndsAt: Date?
+        let connectionCount: Int?
     }
 }

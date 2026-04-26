@@ -54,6 +54,7 @@ function buildBuilder(response: BuilderResponse) {
     upsert: () => builder,
     eq: () => builder,
     or: () => builder,
+    in: () => builder,
     gt: () => builder,
     order: () => builder,
     limit: () => builder,
@@ -207,9 +208,10 @@ describe("POST /api/waves/:id/respond", () => {
     expect(res.status).toBe(410);
   });
 
-  it("creates a connection + dual broadcast on accepted", async () => {
+  it("creates a connection + chat room + dual broadcast on accepted", async () => {
     authedUser(RECEIVER);
-    // Calls: load wave, update wave, insert connection.
+    // Calls in order: load wave, update wave, insert connection, upsert
+    // chat_room, count connections for sender, count connections for receiver.
     supabaseMock.from
       .mockReturnValueOnce(
         buildBuilder({
@@ -224,7 +226,19 @@ describe("POST /api/waves/:id/respond", () => {
         })
       )
       .mockReturnValueOnce(buildBuilder({ data: { id: waveId }, error: null }))
-      .mockReturnValueOnce(buildBuilder({ data: { id: "conn-1" }, error: null }));
+      .mockReturnValueOnce(buildBuilder({ data: { id: "conn-1" }, error: null }))
+      .mockReturnValueOnce(
+        buildBuilder({
+          data: {
+            id: "room-1",
+            started_at: new Date().toISOString(),
+            ends_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+          },
+          error: null
+        })
+      )
+      .mockReturnValueOnce(buildBuilder({ data: null, error: null }))
+      .mockReturnValueOnce(buildBuilder({ data: null, error: null }));
 
     sendPushMock.mockResolvedValue({ sent: 0, ok: false });
 
@@ -234,11 +248,15 @@ describe("POST /api/waves/:id/respond", () => {
       .send({ accepted: true });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ mutual: true, waveId });
+    expect(res.body).toMatchObject({ mutual: true, waveId, chatRoomId: "room-1" });
     expect(broadcastMock).toHaveBeenCalledTimes(2);
     const rooms = broadcastMock.mock.calls.map((c) => c[0]);
     expect(rooms).toContain(`user:${SENDER}`);
     expect(rooms).toContain(`user:${RECEIVER}`);
+    // Each broadcast carries the chat room id
+    for (const call of broadcastMock.mock.calls) {
+      expect(call[2]).toMatchObject({ chatRoomId: "room-1" });
+    }
   });
 
   it("just stamps responded_at when declined", async () => {
@@ -272,9 +290,10 @@ describe("POST /api/waves/:id/respond", () => {
 // ─── GET /api/waves ──────────────────────────────────────────────────────────
 
 describe("GET /api/waves", () => {
-  it("returns incoming + outgoing", async () => {
+  it("returns incoming + outgoing with hydrated other-party profile", async () => {
     authedUser(RECEIVER);
     supabaseMock.from
+      // 1: incoming waves
       .mockReturnValueOnce(
         buildBuilder({
           data: [
@@ -282,7 +301,7 @@ describe("GET /api/waves", () => {
               id: "w1",
               sender_id: SENDER,
               receiver_id: RECEIVER,
-              icebreaker: "hi",
+              icebreaker: "hi from over here, this place is great",
               status: "sent",
               sent_at: "2026-04-26T12:00:00.000Z",
               expires_at: "2026-04-26T14:00:00.000Z"
@@ -291,15 +310,25 @@ describe("GET /api/waves", () => {
           error: null
         })
       )
-      .mockReturnValueOnce(buildBuilder({ data: [], error: null }));
+      // 2: outgoing waves (empty)
+      .mockReturnValueOnce(buildBuilder({ data: [], error: null }))
+      // 3: profile hydrate for the sender
+      .mockReturnValueOnce(
+        buildBuilder({
+          data: [{ id: SENDER, username: "morningfern", bio: "loves coffee" }],
+          error: null
+        })
+      );
 
-    const res = await request(app)
-      .get("/api/waves")
-      .set("Authorization", "Bearer t");
+    const res = await request(app).get("/api/waves").set("Authorization", "Bearer t");
 
     expect(res.status).toBe(200);
     expect(res.body.incoming).toHaveLength(1);
-    expect(res.body.incoming[0]).toMatchObject({ id: "w1", senderId: SENDER });
+    expect(res.body.incoming[0]).toMatchObject({
+      id: "w1",
+      senderId: SENDER,
+      other: { id: SENDER, username: "morningfern" }
+    });
     expect(res.body.outgoing).toEqual([]);
   });
 });

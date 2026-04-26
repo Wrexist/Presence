@@ -1,6 +1,8 @@
 //  PresenceApp
 //  Wave.swift
 //  Created: 2026-04-26
+//  Updated: 2026-04-26 — adds hydrated `other` party + chat-room fields on
+//                        respond response.
 //  Purpose: Wire types for wave persistence + the icebreaker endpoint.
 //           Mirrors the Zod schemas in Backend/src/routes/{waves,icebreaker}.ts.
 
@@ -23,6 +25,17 @@ struct Wave: Identifiable, Hashable, Sendable, Codable {
     let status: Status
     let sentAt: Date
     let expiresAt: Date
+
+    /// Profile of the OTHER party — for incoming waves this is the sender,
+    /// for outgoing it's the receiver. Backend hydrates this in a single
+    /// batched lookup on GET /api/waves.
+    let other: Other?
+
+    struct Other: Hashable, Sendable, Codable {
+        let id: UUID
+        let username: String
+        let bio: String?
+    }
 }
 
 struct WaveListResponse: Sendable, Codable {
@@ -50,6 +63,8 @@ struct RespondWaveRequest: Encodable, Sendable {
 struct RespondWaveResponse: Decodable, Sendable {
     let mutual: Bool
     let waveId: UUID?
+    let chatRoomId: UUID?
+    let chatEndsAt: Date?
 }
 
 // MARK: - Icebreaker generation
@@ -62,8 +77,8 @@ struct IcebreakerRequest: Encodable, Sendable {
 
     struct Venue: Encodable, Sendable {
         let name: String
-        let type: String  // cafe, park, gym, library, bar, coworking, other
-        let vibe: String  // quiet, social, working, active
+        let type: String
+        let vibe: String
     }
 
     struct TimeContext: Encodable, Sendable {

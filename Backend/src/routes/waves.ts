@@ -236,6 +236,49 @@ wavesRouter.post("/:id/respond", requireAuth, async (req: Request, res: Response
     }
   }
 
+  // Create the 10-minute chat room for this newly-mutual pair. Idempotent
+  // via the unique index on wave_id — both sides hitting "wave back"
+  // simultaneously can't double-create.
+  const chatStartedAt = new Date();
+  const chatEndsAt = new Date(chatStartedAt.getTime() + 10 * 60 * 1000);
+  const chatResp = await supabase
+    .from("chat_rooms")
+    .upsert(
+      {
+        wave_id: wave.id,
+        user_a: wave.sender_id,
+        user_b: wave.receiver_id,
+        started_at: chatStartedAt.toISOString(),
+        ends_at: chatEndsAt.toISOString()
+      },
+      { onConflict: "wave_id" }
+    )
+    .select("id, started_at, ends_at")
+    .single();
+
+  type ChatRoomRow = { id: string; started_at: string; ends_at: string };
+  const chatRoom = chatResp.data as ChatRoomRow | null;
+  if (chatResp.error || !chatRoom) {
+    req.log.warn({ err: chatResp.error }, "chat room create failed");
+  }
+
+  // Count connections per user so the iOS celebration can pick a milestone
+  // copy variant. Best-effort; on failure we leave the count out and the
+  // client treats it as "first connection."
+  const connectionCounts: Record<string, number | null> = {
+    [wave.sender_id]: null,
+    [wave.receiver_id]: null
+  };
+  for (const userId of [wave.sender_id, wave.receiver_id]) {
+    const countResp = await supabase
+      .from("connections")
+      .select("id", { count: "exact", head: true })
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+    if (typeof countResp.count === "number") {
+      connectionCounts[userId] = countResp.count;
+    }
+  }
+
   // Broadcast on both inbox rooms so each side's UI flips into the
   // celebration / chat path.
   for (const userId of [wave.sender_id, wave.receiver_id]) {
@@ -243,7 +286,11 @@ wavesRouter.post("/:id/respond", requireAuth, async (req: Request, res: Response
       waveId: wave.id,
       senderId: wave.sender_id,
       receiverId: wave.receiver_id,
-      respondedAt: nowIso
+      respondedAt: nowIso,
+      chatRoomId: chatRoom?.id ?? null,
+      chatStartedAt: chatRoom?.started_at ?? null,
+      chatEndsAt: chatRoom?.ends_at ?? null,
+      connectionCount: connectionCounts[userId]
     });
   }
 
@@ -253,12 +300,21 @@ wavesRouter.post("/:id/respond", requireAuth, async (req: Request, res: Response
     {
       title: "You connected!",
       body: "You both waved. Time to say hi in person.",
-      userInfo: { type: "wave_mutual", waveId: wave.id }
+      userInfo: {
+        type: "wave_mutual",
+        waveId: wave.id,
+        chatRoomId: chatRoom?.id ?? ""
+      }
     },
     req.log
   );
 
-  res.status(200).json({ mutual: true, waveId: wave.id });
+  res.status(200).json({
+    mutual: true,
+    waveId: wave.id,
+    chatRoomId: chatRoom?.id ?? null,
+    chatEndsAt: chatRoom?.ends_at ?? null
+  });
 });
 
 // ─── GET /api/waves ──────────────────────────────────────────────────────────
@@ -273,9 +329,6 @@ wavesRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   const callerId = req.userId!;
   const nowIso = new Date().toISOString();
 
-  // Two parallel queries — server-side join would be cleaner but the
-  // PostgREST embedded-resource syntax adds noise; this is fine at this
-  // scale.
   const incomingResp = await supabase
     .from("waves")
     .select("id, sender_id, receiver_id, icebreaker, status, sent_at, expires_at")
@@ -301,19 +354,47 @@ wavesRouter.get("/", requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
-  const map = (rows: WaveRow[] | null) =>
-    (rows ?? []).map((r) => ({
-      id: r.id,
-      senderId: r.sender_id,
-      receiverId: r.receiver_id,
-      icebreaker: r.icebreaker,
-      status: r.status,
-      sentAt: r.sent_at,
-      expiresAt: r.expires_at
-    }));
+  const incoming = (incomingResp.data as WaveRow[] | null) ?? [];
+  const outgoing = (outgoingResp.data as WaveRow[] | null) ?? [];
+
+  // Hydrate the OTHER party's profile per row in a single batched query —
+  // PostgREST embedded resources collapse on FKs from the same table twice
+  // (waves → users.sender + users.receiver), so a separate fetch is the
+  // simpler robust path.
+  const otherIds = new Set<string>();
+  for (const w of incoming) otherIds.add(w.sender_id);
+  for (const w of outgoing) otherIds.add(w.receiver_id);
+
+  type UserProfile = { id: string; username: string; bio: string | null };
+  const profileMap = new Map<string, UserProfile>();
+  if (otherIds.size > 0) {
+    const profileResp = await supabase
+      .from("users")
+      .select("id, username, bio")
+      .in("id", Array.from(otherIds));
+    const rows = (profileResp.data as UserProfile[] | null) ?? [];
+    for (const r of rows) profileMap.set(r.id, r);
+  }
+
+  const hydrate = (rows: WaveRow[], otherKey: "sender_id" | "receiver_id") =>
+    rows.map((r) => {
+      const other = profileMap.get(r[otherKey]);
+      return {
+        id: r.id,
+        senderId: r.sender_id,
+        receiverId: r.receiver_id,
+        icebreaker: r.icebreaker,
+        status: r.status,
+        sentAt: r.sent_at,
+        expiresAt: r.expires_at,
+        other: other
+          ? { id: other.id, username: other.username, bio: other.bio }
+          : { id: r[otherKey], username: "Someone", bio: null }
+      };
+    });
 
   res.json({
-    incoming: map(incomingResp.data as WaveRow[] | null),
-    outgoing: map(outgoingResp.data as WaveRow[] | null)
+    incoming: hydrate(incoming, "sender_id"),
+    outgoing: hydrate(outgoing, "receiver_id")
   });
 });
