@@ -22,6 +22,22 @@ struct PresenceApp: App {
                 .task {
                     await coordinator.boot(auth: services.auth)
                 }
+                .onChange(of: coordinator.route) { _, newRoute in
+                    // Socket connects once we land on .main (i.e. we have
+                    // a valid session) and disconnects on sign-out
+                    // (resetToOnboarding). One connection per app lifetime,
+                    // shared across tabs.
+                    Task { @MainActor in
+                        switch newRoute {
+                        case .main:
+                            await services.socket.connect()
+                        case .onboarding:
+                            services.socket.disconnect()
+                        case .launching:
+                            break
+                        }
+                    }
+                }
         }
     }
 }

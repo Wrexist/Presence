@@ -73,7 +73,7 @@
 - [x] TASK-005a: BackendClient (URLSession actor with retries + typed errors) — `Data/BackendClient.swift`
 - [x] TASK-006: PresenceService (toggle on/off, 3h expiry) — `Services/PresenceService.swift`
 - [x] TASK-007: Supabase PostGIS integration (store/query presences) — `Backend/src/routes/presence.ts` + `0002_nearby_presences_function.sql`
-- [ ] TASK-008: WebSocket service (real-time dot updates on map) — backend broadcasts in place; iOS `SocketService` + geohash subscribe is B5/B6
+- [x] TASK-008: WebSocket service (real-time dot updates on map) — backend geohash rooms + JWT handshake auth (B5); iOS `SocketService` + `MapViewModel` merging REST hydrate with socket events (B6)
 - [x] TASK-009: PresenceDotView (glowing marker on map)
 - [x] TASK-010: "Go Present" button (main CTA, glass pill) — wired to `PresenceService.activate/deactivate` + 3h countdown chip
 - [ ] TASK-011: Luma component + idle animation (Lottie — currently pure SwiftUI)

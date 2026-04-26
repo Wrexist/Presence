@@ -1,7 +1,7 @@
 //  PresenceApp
 //  ServiceContainer.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — adds PresenceService wired to BackendClient + LocationService.
+//  Updated: 2026-04-26 — adds SocketService.
 //  Purpose: Lightweight DI container. Holds service singletons that views
 //           read via @Environment. Use .live() in app, .preview() in #Previews.
 
@@ -16,21 +16,24 @@ final class ServiceContainer {
     let location: LocationService
     let backend: BackendClient
     let presence: PresenceService
+    let socket: SocketService
 
-    // MatchingService, SocketService arrive in later slices.
+    // MatchingService arrives in a later slice.
 
     init(
         supabase: SupabaseClient,
         auth: AuthService,
         location: LocationService,
         backend: BackendClient,
-        presence: PresenceService
+        presence: PresenceService,
+        socket: SocketService
     ) {
         self.supabase = supabase
         self.auth = auth
         self.location = location
         self.backend = backend
         self.presence = presence
+        self.socket = socket
     }
 
     static func live() -> ServiceContainer {
@@ -39,12 +42,14 @@ final class ServiceContainer {
         let location = LocationService()
         let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
         let presence = PresenceService(backend: backend, location: location)
+        let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         return ServiceContainer(
             supabase: client,
             auth: auth,
             location: location,
             backend: backend,
-            presence: presence
+            presence: presence,
+            socket: socket
         )
     }
 
@@ -56,12 +61,14 @@ final class ServiceContainer {
         let location = LocationService()
         let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
         let presence = PresenceService(backend: backend, location: location)
+        let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         return ServiceContainer(
             supabase: client,
             auth: auth,
             location: location,
             backend: backend,
-            presence: presence
+            presence: presence,
+            socket: socket
         )
     }
 }

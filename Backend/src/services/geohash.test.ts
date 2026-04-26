@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { geohashOf } from "./geohash.js";
+import { geohashOf, adjacentGeohash, geohashAndNeighbors } from "./geohash.js";
 
 describe("geohashOf", () => {
   it("returns a 5-char base32 hash by default", () => {
@@ -26,3 +26,28 @@ describe("geohashOf", () => {
     expect(geohashOf(0, 0, 7)).toHaveLength(7);
   });
 });
+
+describe("adjacentGeohash", () => {
+  it("matches well-known reference values for 'gbsuv'", () => {
+    // Reference: https://www.movable-type.co.uk/scripts/geohash.html
+    expect(adjacentGeohash("gbsuv", "n")).toBe("gbsuy");
+    expect(adjacentGeohash("gbsuv", "s")).toBe("gbsut");
+    expect(adjacentGeohash("gbsuv", "e")).toBe("gbsvj");
+    expect(adjacentGeohash("gbsuv", "w")).toBe("gbsuu");
+  });
+
+  it("walking N then S returns the original hash", () => {
+    const start = geohashOf(37.7749, -122.4194);
+    expect(adjacentGeohash(adjacentGeohash(start, "n"), "s")).toBe(start);
+  });
+});
+
+describe("geohashAndNeighbors", () => {
+  it("returns 9 unique buckets for an interior cell", () => {
+    const center = geohashOf(37.7749, -122.4194);
+    const all = geohashAndNeighbors(center);
+    expect(all).toHaveLength(9);
+    expect(new Set(all).size).toBe(9);
+  });
+});
+
