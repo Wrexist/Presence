@@ -98,11 +98,12 @@
 - [x] TASK-026: Luma full state machine — `LumaCoordinator` (D7) drives the ambient Luma corner on `HomeView`; explicit-state Lumas (onboarding, paywall, celebration, chat) stay inline
 
 ### Sprint 4 — Beta
-- [ ] TASK-027: App Store Connect setup
-- [ ] TASK-028: TestFlight distribution
+- [x] TASK-027: App Store Connect setup — submission pack drafted in `docs/app-store.md` (E4)
+- [x] TASK-028: TestFlight distribution — runbook in `docs/testflight-runbook.md` (E6)
 - [x] TASK-029: Analytics (PostHog) — `AnalyticsService` actor with typed events; identify on `.main`, reset on `.onboarding`; events fire from onboarding/presence/wave/paywall surfaces (E2)
 - [x] TASK-030: Crash reporting (Sentry) — iOS `CrashReportingService` (no screenshots/view-hierarchy/IP); Node `sentry.ts` with PII scrubbing + `/debug-sentry` (E3)
-- [ ] TASK-031: ASO — screenshots, description, keywords
+- [x] TASK-031: ASO — screenshots specs + description + keywords + age rating in `docs/app-store.md` (E4)
+- [x] TASK-031a: Privacy + Terms drafts — `legal/privacy.md` + `legal/terms.md` (E5)
 - [ ] TASK-032: Venue partner B2B backend
 
 ---
