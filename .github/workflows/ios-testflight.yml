@@ -1,0 +1,550 @@
+name: iOS TestFlight Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_CONNECT_KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+          APPLE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+          APPLE_CONNECT_PRIVATE_KEY: ${{ secrets.APPLE_CONNECT_PRIVATE_KEY }}
+        run: |
+          MISSING=0
+          check_secret() {
+            if [ -z "$2" ]; then
+              echo "FATAL: Secret '$1' is not set or empty"
+              MISSING=1
+            else
+              echo "OK: $1 is configured"
+            fi
+          }
+          check_secret "APPLE_CERTIFICATE_BASE64" "$APPLE_CERTIFICATE_BASE64"
+          check_secret "APPLE_CERTIFICATE_PASSWORD" "$APPLE_CERTIFICATE_PASSWORD"
+          check_secret "APPLE_TEAM_ID" "$APPLE_TEAM_ID"
+          check_secret "APPLE_CONNECT_KEY_ID" "$APPLE_CONNECT_KEY_ID"
+          check_secret "APPLE_CONNECT_ISSUER_ID" "$APPLE_CONNECT_ISSUER_ID"
+          check_secret "APPLE_CONNECT_PRIVATE_KEY" "$APPLE_CONNECT_PRIVATE_KEY"
+          if [ "$MISSING" -ne 0 ]; then
+            echo ""
+            echo "One or more required secrets are missing."
+            echo "See TESTFLIGHT_SETUP.md for setup instructions."
+            exit 1
+          fi
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Verify Xcode version
+        run: |
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --show-sdk-version --sdk iphoneos)"
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/xcodegen
+            /opt/homebrew/Cellar/xcodegen
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: derived-data-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: derived-data-${{ runner.os }}-
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen &> /dev/null; then
+            if ls "$(brew --prefix)/Cellar/xcodegen" &>/dev/null 2>&1; then
+              brew link --overwrite xcodegen 2>/dev/null || true
+            fi
+          fi
+          if ! command -v xcodegen &> /dev/null; then
+            brew install xcodegen || brew reinstall xcodegen
+            brew link --overwrite xcodegen 2>/dev/null || true
+          fi
+          echo "$(brew --prefix)/bin" >> $GITHUB_PATH
+          export PATH="$(brew --prefix)/bin:$PATH"
+          if ! command -v xcodegen &> /dev/null; then
+            echo "FATAL: xcodegen still not on PATH after install"
+            ls -la "$(brew --prefix)/Cellar/xcodegen/" 2>/dev/null || echo "No xcodegen in Cellar"
+            exit 1
+          fi
+          echo "XcodeGen ready: $(xcodegen --version)"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Stamp build number into Info.plist
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          PLIST="Presence/Resources/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
+          echo "Stamped CFBundleVersion = $BUILD_NUMBER"
+
+      - name: Verify Info.plist keys
+        run: |
+          PLIST="Presence/Resources/Info.plist"
+          echo "=== Info.plist contents ==="
+          cat "$PLIST"
+          echo ""
+          echo "=== Verifying required keys ==="
+          /usr/libexec/PlistBuddy -c "Print :UISupportedInterfaceOrientations" "$PLIST" || { echo "FATAL: UISupportedInterfaceOrientations missing"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :UILaunchScreen" "$PLIST" || { echo "FATAL: UILaunchScreen missing"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$PLIST" || { echo "FATAL: NSLocationWhenInUseUsageDescription missing"; exit 1; }
+          echo "All required keys present."
+
+      - name: Prepare app icon from Presence/Icon.png
+        run: |
+          SRC="Presence/Icon.png"
+          DEST_DIR="Presence/Resources/Assets.xcassets/AppIcon.appiconset"
+          DEST="$DEST_DIR/AppIcon.png"
+          mkdir -p "$DEST_DIR"
+
+          if [ -f "$SRC" ]; then
+            # Resize to the exact 1024x1024 App Store / TestFlight icon size,
+            # flatten any alpha to opaque (App Store rejects transparent icons),
+            # and strip the alpha channel entirely.
+            sips -s format png -s formatOptions default \
+                 -z 1024 1024 "$SRC" --out "$DEST" >/dev/null
+            sips -s hasAlpha no "$DEST" >/dev/null 2>&1 || true
+            DIMS=$(sips -g pixelWidth -g pixelHeight "$DEST" | awk '/pixelWidth|pixelHeight/ {print $2}' | paste -sd x -)
+            echo "App icon sourced from $SRC → $DEST ($DIMS)"
+          else
+            echo "WARN: $SRC not found — generating a deep-indigo placeholder so the build still ships"
+            python3 - << 'EOF'
+          import struct, zlib, os
+
+          def make_png(width, height, r, g, b):
+              def chunk(name, data):
+                  c = zlib.crc32(name + data) & 0xffffffff
+                  return struct.pack('>I', len(data)) + name + data + struct.pack('>I', c)
+              ihdr = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
+              scanline = b'\x00' + bytes([r, g, b]) * width
+              raw = scanline * height
+              idat = zlib.compress(raw)
+              return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+
+          out = 'Presence/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
+          os.makedirs(os.path.dirname(out), exist_ok=True)
+          with open(out, 'wb') as f:
+              f.write(make_png(1024, 1024, 12, 18, 48))
+          print(f"Generated placeholder {out}")
+          EOF
+          fi
+
+      - name: Import certificate
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$CERTIFICATE" | base64 --decode > "$CERT_PATH"
+
+          CERT_SIZE=$(stat -f%z "$CERT_PATH" 2>/dev/null || stat --printf="%s" "$CERT_PATH" 2>/dev/null)
+          if [ "$CERT_SIZE" -lt 100 ]; then
+            echo "FATAL: Decoded certificate is only $CERT_SIZE bytes — secret is likely empty or corrupt"
+            exit 1
+          fi
+          echo "Certificate decoded: $CERT_SIZE bytes"
+
+          KC_PASSWORD=$(openssl rand -hex 24)
+          security create-keychain -p "$KC_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KC_PASSWORD" build.keychain
+          security set-keychain-settings build.keychain
+          security import "$CERT_PATH" -k build.keychain -P "$PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASSWORD" build.keychain
+          rm -f "$CERT_PATH"
+          echo "Certificate imported successfully"
+
+      - name: Setup App Store Connect API key
+        env:
+          API_KEY: ${{ secrets.APPLE_CONNECT_PRIVATE_KEY }}
+          KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+        run: |
+          KEY_DIR="$RUNNER_TEMP/private_keys"
+          mkdir -p "$KEY_DIR"
+          chmod 700 "$KEY_DIR"
+          # Handle both real newlines and escaped \n sequences from GitHub secrets
+          printf '%s' "$API_KEY" | sed 's/\\n/\n/g' > "$KEY_DIR/AuthKey_${KEY_ID}.p8"
+          chmod 600 "$KEY_DIR/AuthKey_${KEY_ID}.p8"
+          KEY_SIZE=$(wc -c < "$KEY_DIR/AuthKey_${KEY_ID}.p8")
+          if [ "$KEY_SIZE" -lt 100 ]; then
+            echo "FATAL: API key file is only $KEY_SIZE bytes — APPLE_CONNECT_PRIVATE_KEY secret is empty or corrupt"
+            exit 1
+          fi
+          echo "API key written for key ID: $KEY_ID ($KEY_SIZE bytes)"
+
+      - name: Preflight — verify Developer Portal resources
+        env:
+          KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+        run: |
+          set -e
+          export KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8"
+
+          echo "=== ASC credential diagnostics ==="
+          if [ -z "$KEY_ID" ]; then
+            echo "FATAL: APPLE_CONNECT_KEY_ID secret is empty"
+            exit 1
+          fi
+          echo "KEY_ID length: ${#KEY_ID} chars (expected 10)"
+
+          if [ -z "$ISSUER_ID" ]; then
+            echo "FATAL: APPLE_CONNECT_ISSUER_ID secret is empty"
+            exit 1
+          fi
+          echo "ISSUER_ID length: ${#ISSUER_ID} chars (expected 36 for UUID)"
+
+          if [ ! -f "$KEY_PATH" ]; then
+            echo "FATAL: Key file not found at $KEY_PATH"
+            exit 1
+          fi
+          KEY_SIZE=$(wc -c < "$KEY_PATH")
+          echo "Key file size: $KEY_SIZE bytes (expected ~240–280 for EC P-256 .p8)"
+          head -1 "$KEY_PATH"
+          tail -1 "$KEY_PATH"
+
+          echo "=== Starting preflight checks ==="
+          python3 -m pip install --quiet --disable-pip-version-check cryptography >/dev/null 2>&1 || true
+          python3 - <<'PY'
+          # Verifies what the public App Store Connect API can see:
+          #   - bundle ID com.presenceapp.ios is registered
+          #   - it has the Push Notifications capability (required by the
+          #     Presence.entitlements aps-environment key)
+
+          import base64, json, os, sys, time, urllib.request, urllib.error
+          from cryptography.hazmat.primitives import hashes, serialization
+          from cryptography.hazmat.primitives.asymmetric import ec, utils
+
+          def b64url(data: bytes) -> str:
+              return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+          with open(os.environ["KEY_PATH"], "rb") as f:
+              key = serialization.load_pem_private_key(f.read(), password=None)
+
+          header = b64url(json.dumps(
+              {"alg": "ES256", "kid": os.environ["KEY_ID"], "typ": "JWT"},
+              separators=(",", ":"),
+          ).encode())
+          now = int(time.time())
+          payload = b64url(json.dumps({
+              "iss": os.environ["ISSUER_ID"],
+              "iat": now,
+              "exp": now + 600,
+              "aud": "appstoreconnect-v1",
+          }, separators=(",", ":")).encode())
+          signing_input = f"{header}.{payload}".encode()
+          der = key.sign(signing_input, ec.ECDSA(hashes.SHA256()))
+          r, s = utils.decode_dss_signature(der)
+          token = f"{header}.{payload}.{b64url(r.to_bytes(32, 'big') + s.to_bytes(32, 'big'))}"
+
+          BASE = "https://api.appstoreconnect.apple.com"
+
+          def api_get(path):
+              url = path if path.startswith("http") else BASE + path
+              req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      return json.loads(resp.read())
+              except urllib.error.HTTPError as e:
+                  print(f"FATAL: {url} -> {e.code}")
+                  print(e.read().decode(errors="replace"))
+                  sys.exit(1)
+
+          def paginate(path):
+              url = path
+              while url:
+                  body = api_get(url)
+                  for d in body.get("data", []):
+                      yield d
+                  url = body.get("links", {}).get("next")
+
+          REQUIRED_BUNDLE = "com.presenceapp.ios"
+          WANT_CAPS = {"PUSH_NOTIFICATIONS"}
+
+          bundle_map = {
+              d["attributes"]["identifier"]: d["id"]
+              for d in paginate("/v1/bundleIds?limit=200")
+              if d.get("attributes", {}).get("identifier")
+          }
+
+          problems = []
+          if REQUIRED_BUNDLE not in bundle_map:
+              problems.append(f"App ID '{REQUIRED_BUNDLE}' is not registered in the Developer Portal")
+              print(f"MISSING: App ID {REQUIRED_BUNDLE}")
+          else:
+              print(f"OK: App ID {REQUIRED_BUNDLE}")
+              brid = bundle_map[REQUIRED_BUNDLE]
+              caps_resp = api_get(f"/v1/bundleIds/{brid}/bundleIdCapabilities")
+              enabled = {
+                  c["attributes"]["capabilityType"]
+                  for c in caps_resp.get("data", [])
+                  if c.get("attributes", {}).get("capabilityType")
+              }
+              print(f"{REQUIRED_BUNDLE} enabled capabilities: {sorted(enabled) or '(none)'}")
+              miss = WANT_CAPS - enabled
+              for cap in sorted(miss):
+                  print(f"  MISSING capability: {cap}")
+                  problems.append(f"App ID '{REQUIRED_BUNDLE}' is missing capability {cap}")
+
+          if problems:
+              print()
+              print("FATAL: preflight detected Developer Portal configuration problems:")
+              for p in problems:
+                  print(f"  - {p}")
+              print()
+              print("Fix in the Developer Portal:")
+              print("  https://developer.apple.com/account/resources/identifiers/list")
+              print()
+              print("  1. If the App ID is missing: + → App IDs → App → register")
+              print(f"     bundle ID '{REQUIRED_BUNDLE}'")
+              print("  2. Click the App ID → tick 'Push Notifications' → Save")
+              print()
+              print("See TESTFLIGHT_SETUP.md → 'Step 1: Register the App ID'.")
+              sys.exit(1)
+
+          print()
+          print("Preflight passed: App ID registered with required capabilities.")
+          PY
+
+      - name: Build archive
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -o pipefail
+          echo "Building build #$BUILD_NUMBER"
+
+          ARCHIVE_STATUS=0
+          xcodebuild archive \
+            -project Presence.xcodeproj \
+            -scheme Presence \
+            -archivePath "$RUNNER_TEMP/Presence.xcarchive" \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            OTHER_CODE_SIGN_FLAGS="--keychain build.keychain" \
+            | tee "$RUNNER_TEMP/xcodebuild-archive.log" || ARCHIVE_STATUS=$?
+
+          if [ "$ARCHIVE_STATUS" -ne 0 ] || [ ! -d "$RUNNER_TEMP/Presence.xcarchive" ]; then
+            echo ""
+            echo "=================================================================="
+            echo "Archive failed. Scanning log for known signing/entitlement issues…"
+            echo "=================================================================="
+            if grep -E "doesn't match the entitlements file's value|doesn't include the .* (capability|entitlement)" \
+                 "$RUNNER_TEMP/xcodebuild-archive.log" >/dev/null 2>&1; then
+              echo ""
+              echo "Detected a capability/entitlement mismatch. Xcode's -allowProvisioningUpdates"
+              echo "fetched profiles from Apple, but they don't contain the entitlements your app"
+              echo "requests. Check the profiles below to see what Apple returned."
+              echo ""
+              grep -E "doesn't match the entitlements file's value|doesn't include the .* (capability|entitlement)" \
+                   "$RUNNER_TEMP/xcodebuild-archive.log" || true
+              echo ""
+              echo "=================================================================="
+              echo "Auto-generated provisioning profiles (ground truth from Apple)"
+              echo "=================================================================="
+              PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+              if [ -d "$PROFILE_DIR" ] && ls "$PROFILE_DIR"/*.mobileprovision >/dev/null 2>&1; then
+                for p in "$PROFILE_DIR"/*.mobileprovision; do
+                  echo ""
+                  echo "--- $(basename "$p") ---"
+                  PLIST=$(security cms -D -i "$p")
+                  printf 'Name:        '; echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Name' /dev/stdin 2>/dev/null || true
+                  printf 'AppIDName:   '; echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :AppIDName' /dev/stdin 2>/dev/null || true
+                  printf 'UUID:        '; echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin 2>/dev/null || true
+                  printf 'TeamID:      '; echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' /dev/stdin 2>/dev/null || true
+                  echo "application-identifier: $(echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' /dev/stdin 2>/dev/null || echo '(missing)')"
+                  echo "aps-environment:        $(echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Entitlements:aps-environment' /dev/stdin 2>/dev/null || echo '(not enabled)')"
+                done
+              else
+                echo "(no profiles fetched — likely failed before provisioning step)"
+              fi
+              echo ""
+              echo "=================================================================="
+              echo "What to do"
+              echo "=================================================================="
+              echo "Go to https://developer.apple.com/account/resources/identifiers/list"
+              echo ""
+              echo "1. Click the App ID 'com.presenceapp.ios' → tick 'Push Notifications' → Save."
+              echo "2. Re-run this workflow. The profile above should now show"
+              echo "   'aps-environment' in its entitlements."
+            fi
+            echo "FATAL: Archive was not created"
+            exit 1
+          fi
+          echo "Archive created successfully"
+
+          echo ""
+          echo "=== Auto-generated provisioning profiles (for reference) ==="
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          for p in "$PROFILE_DIR"/*.mobileprovision; do
+            [ -f "$p" ] || continue
+            PLIST=$(security cms -D -i "$p")
+            NAME=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Name' /dev/stdin 2>/dev/null)
+            APPID=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' /dev/stdin 2>/dev/null)
+            APS=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print :Entitlements:aps-environment' /dev/stdin 2>/dev/null)
+            echo "  $NAME  |  $APPID  |  aps: $APS"
+          done
+
+      - name: Verify archive Info.plist
+        run: |
+          APP_PLIST="$RUNNER_TEMP/Presence.xcarchive/Products/Applications/Presence.app/Info.plist"
+          echo "=== Archive bundle Info.plist ==="
+          /usr/libexec/PlistBuddy -c "Print" "$APP_PLIST"
+          echo ""
+          echo "=== Verifying required keys in archive ==="
+          /usr/libexec/PlistBuddy -c "Print :UISupportedInterfaceOrientations" "$APP_PLIST" || { echo "FATAL: UISupportedInterfaceOrientations missing from archive"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :UILaunchScreen" "$APP_PLIST" || { echo "FATAL: UILaunchScreen missing from archive"; exit 1; }
+          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PLIST")
+          echo "CFBundleVersion in archive: $BUNDLE_VERSION"
+          if [ "$BUNDLE_VERSION" = "1" ] || [ "$BUNDLE_VERSION" = '$(CURRENT_PROJECT_VERSION)' ] || [ -z "$BUNDLE_VERSION" ]; then
+            echo "FATAL: CFBundleVersion is '$BUNDLE_VERSION' — build number was not stamped correctly"
+            exit 1
+          fi
+          echo "Archive verification passed."
+
+      - name: Export IPA
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/exportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+          echo "=== exportOptions.plist ==="
+          cat "$RUNNER_TEMP/exportOptions.plist"
+          echo "=========================="
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Presence.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/exportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            | tee "$RUNNER_TEMP/xcodebuild-export.log"
+
+          IPA_COUNT=$(ls "$RUNNER_TEMP/export/"*.ipa 2>/dev/null | wc -l)
+          if [ "$IPA_COUNT" -eq 0 ]; then
+            echo "FATAL: No IPA file found in export directory"
+            ls -la "$RUNNER_TEMP/export/" || true
+            exit 1
+          fi
+          echo "IPA exported successfully"
+          ls -lh "$RUNNER_TEMP/export/"*.ipa
+
+      - name: Upload to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.APPLE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/uploadOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+          echo "=== uploadOptions.plist ==="
+          cat "$RUNNER_TEMP/uploadOptions.plist"
+          echo "==========================="
+
+          echo "Starting upload to App Store Connect..."
+          UPLOAD_LOG="$RUNNER_TEMP/upload.log"
+
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Presence.xcarchive" \
+            -exportPath "$RUNNER_TEMP/upload-output" \
+            -exportOptionsPlist "$RUNNER_TEMP/uploadOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" 2>&1 | tee "$UPLOAD_LOG"
+
+          echo ""
+          echo "Upload command completed."
+          echo "Build uploaded. It will appear in TestFlight within 15-30 minutes after Apple processing."
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/export/*.ipa
+            ${{ runner.temp }}/xcodebuild-archive.log
+            ${{ runner.temp }}/xcodebuild-export.log
+            ${{ runner.temp }}/upload.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Cleanup
+        if: always()
+        run: |
+          security delete-keychain build.keychain 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/private_keys" 2>/dev/null || true
