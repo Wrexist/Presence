@@ -44,24 +44,77 @@ In [App Store Connect → My Apps](https://appstoreconnect.apple.com/apps):
 
 ---
 
-## Step 3: Export the distribution certificate (one-time, needs a Mac)
+## Step 3: Export the distribution certificate (one-time)
 
-1. Open **Keychain Access** on the Mac
-2. Request a certificate: **Keychain Access → Certificate Assistant → Request a Certificate From a Certificate Authority**
-   - Email: your Apple ID
-   - Common Name: `Presence Distribution`
-   - Saved to disk → `CertificateSigningRequest.certSigningRequest`
-3. In the [Developer Portal → Certificates](https://developer.apple.com/account/resources/certificates/list):
-   - **+** → **Apple Distribution** → upload the CSR → download the `.cer`
-4. Double-click the `.cer` to import into Keychain
-5. In Keychain, find the cert → expand it → right-click the private key → **Export**
-   - Save as `PresenceDistribution.p12`
-   - Set a password (remember this — it becomes `APPLE_CERTIFICATE_PASSWORD`)
-6. Base64-encode it:
-   ```bash
-   base64 -i PresenceDistribution.p12 | pbcopy
-   ```
-   That's `APPLE_CERTIFICATE_BASE64`.
+This produces the `.p12` distribution certificate that Apple's signing tools need. **You don't need a Mac** — the entire flow works from Windows using OpenSSL (which ships with Git for Windows; no extra install needed if you already use git).
+
+> Run these commands in **Git Bash** on Windows (or any shell with `openssl` on PATH — WSL, PowerShell with OpenSSL via `winget install ShiningLight.OpenSSL.Light`, etc.). All commands work the same on Linux and macOS.
+
+### 3a. Generate a private key + CSR
+
+```bash
+# Replace YOUR_APPLE_ID_EMAIL with the email tied to your Apple Developer account.
+openssl genrsa -out PresenceDistribution.key 2048
+openssl req -new \
+  -key PresenceDistribution.key \
+  -out PresenceDistribution.csr \
+  -subj "/emailAddress=YOUR_APPLE_ID_EMAIL/CN=Presence Distribution/C=US"
+```
+
+You now have two files:
+- `PresenceDistribution.key` — your private key. **Keep this file safe.** Don't commit it, don't email it.
+- `PresenceDistribution.csr` — the request to send to Apple.
+
+### 3b. Get Apple to issue the certificate
+
+1. Open the [Developer Portal → Certificates](https://developer.apple.com/account/resources/certificates/list)
+2. Click **+** → choose **Apple Distribution** → **Continue**
+3. **Choose File** → upload `PresenceDistribution.csr` → **Continue**
+4. Click **Download** → save the file (it'll be named something like `distribution.cer`) next to your `.csr` and `.key`
+
+### 3c. Bundle the cert + key into a `.p12`
+
+```bash
+# Convert Apple's DER-format .cer to PEM
+openssl x509 -in distribution.cer -inform DER -out distribution.pem -outform PEM
+
+# Bundle private key + cert into a single .p12, password-protected.
+# IMPORTANT: -legacy is required. Without it, OpenSSL 3.x produces a .p12
+# that Apple's signing tools can't read (they don't accept the modern AES-256
+# PKCS#12 default yet).
+openssl pkcs12 -export -legacy \
+  -inkey PresenceDistribution.key \
+  -in distribution.pem \
+  -name "Presence Distribution" \
+  -out PresenceDistribution.p12
+```
+
+When prompted for an export password, enter one and **remember it** — that's your `APPLE_CERTIFICATE_PASSWORD` secret.
+
+### 3d. Base64-encode the `.p12` for the GitHub secret
+
+**Git Bash / WSL / Linux / macOS:**
+```bash
+base64 -w 0 PresenceDistribution.p12 > PresenceDistribution.p12.b64
+# then open PresenceDistribution.p12.b64 in any text editor and copy its contents
+```
+On macOS replace `-w 0` with `-b 0`. On macOS you can also pipe to `pbcopy`; on Windows Git Bash, pipe to `clip` instead:
+```bash
+base64 -w 0 PresenceDistribution.p12 | clip
+```
+
+**PowerShell:**
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("PresenceDistribution.p12")) | Set-Clipboard
+```
+
+That clipboard contents is your `APPLE_CERTIFICATE_BASE64` secret.
+
+### 3e. Clean up
+
+After you've added both secrets to GitHub (Step 6), **delete `PresenceDistribution.key` and `PresenceDistribution.p12` from your machine** if you don't plan to re-issue locally. The cert lives in GitHub Secrets now; keeping the originals around is just an exfiltration risk.
+
+If you ever lose the secrets, just repeat Step 3 — Apple lets you revoke and re-issue distribution certs freely.
 
 ---
 
