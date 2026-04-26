@@ -10,7 +10,7 @@
 1. Apple Developer Program membership ($99/yr)
 2. App Store Connect access for this Apple ID
 3. A Mac **once**, to export the distribution certificate (or ask someone with a Mac)
-4. An App Record in App Store Connect for bundle ID `com.presenceapp.ios`
+4. An App Record in App Store Connect for bundle ID `app.presence.ios`
 
 Everything else runs from GitHub Actions — no Mac required for subsequent builds.
 
@@ -22,7 +22,7 @@ In the [Developer Portal → Identifiers](https://developer.apple.com/account/re
 
 1. Click **+** → **App IDs** → **App** → **Continue**
 2. Description: `Presence`
-3. Bundle ID (explicit): `com.presenceapp.ios`
+3. Bundle ID (explicit): `app.presence.ios`
 4. Under **Capabilities**, tick **Push Notifications**
 5. **Continue** → **Register**
 
@@ -38,7 +38,7 @@ In [App Store Connect → My Apps](https://appstoreconnect.apple.com/apps):
 2. Platform: **iOS**
 3. Name: `Presence`
 4. Primary language: English (U.S.)
-5. Bundle ID: pick `com.presenceapp.ios` from the dropdown
+5. Bundle ID: pick `app.presence.ios` from the dropdown
 6. SKU: `presence-ios` (anything unique to you)
 7. User access: Full Access
 
@@ -144,11 +144,11 @@ The build number (`CFBundleVersion`) is set automatically by the workflow to `${
 
 **Preflight fails: "App ID not registered"** → Go back to Step 1.
 
-**Preflight fails: "missing capability PUSH_NOTIFICATIONS"** → In the Developer Portal, click the `com.presenceapp.ios` App ID, tick **Push Notifications**, Save.
+**Preflight fails: "missing capability PUSH_NOTIFICATIONS"** → In the Developer Portal, click the `app.presence.ios` App ID, tick **Push Notifications**, Save.
 
 **Archive fails: "doesn't match the entitlements file's value"** → Same fix as above. The workflow dumps the fetched provisioning profiles on failure so you can see exactly what Apple returned.
 
-**Upload fails: "Invalid Provisioning Profile"** → Almost always means the bundle ID in App Store Connect (Step 2) doesn't match `com.presenceapp.ios`. Check the app record.
+**Upload fails: "Invalid Provisioning Profile"** → Almost always means the bundle ID in App Store Connect (Step 2) doesn't match `app.presence.ios`. Check the app record.
 
 **Build uploads but doesn't appear in TestFlight** → Wait 15–30 min for Apple's processing. If still missing after an hour, check the sender email account used for the API key — Apple emails processing errors there.
 
