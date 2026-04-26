@@ -12,6 +12,7 @@ import { config } from "./config.js";
 import { healthRouter } from "./routes/health.js";
 import { icebreakerRouter } from "./routes/icebreaker.js";
 import { presenceRouter } from "./routes/presence.js";
+import { usersRouter } from "./routes/users.js";
 import { wavesRouter } from "./routes/waves.js";
 
 interface HttpError extends Error {
@@ -36,6 +37,7 @@ export function createApp(logger: Logger = pino({ level: config.LOG_LEVEL })): e
   app.use("/health", healthRouter);
   app.use("/api/icebreaker", icebreakerRouter);
   app.use("/api/presence", presenceRouter);
+  app.use("/api/users", usersRouter);
   app.use("/api/waves", wavesRouter);
 
   app.use((req, res) => {

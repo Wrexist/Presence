@@ -1,9 +1,11 @@
 //  Presence backend
 //  icebreaker.ts
 //  POST /api/icebreaker — generates a single icebreaker via Claude.
-//  Rate limited to 1 request / 30s per sender to control cost and abuse.
+//  Auth required (sender id is taken from the JWT, never the body or
+//  headers). Rate limited to 1 request / 30s per sender.
 
 import { Router, type Request, type Response } from "express";
+import { requireAuth } from "../middleware/auth.js";
 import { generateIcebreaker, IcebreakerRequestSchema } from "../services/matchingService.js";
 
 export const icebreakerRouter: Router = Router();
@@ -13,21 +15,8 @@ export const icebreakerRouter: Router = Router();
 const lastCallAt = new Map<string, number>();
 const RATE_LIMIT_MS = 30_000;
 
-icebreakerRouter.post("/", async (req: Request, res: Response) => {
-  // Sender identity — required. We don't have auth yet, so the client
-  // must pass a stable id via x-sender-id. Falling back to req.ip collides
-  // across users behind a reverse proxy or NAT (all requests see the same
-  // IP) and would rate-limit unrelated users together. Replace with the
-  // authenticated user id once Supabase Auth lands.
-  const header = req.header("x-sender-id");
-  if (!header || header.length === 0 || header.length > 64) {
-    res.status(400).json({
-      error: "missing_sender_id",
-      message: "x-sender-id header is required (1-64 chars)"
-    });
-    return;
-  }
-  const senderId = header;
+icebreakerRouter.post("/", requireAuth, async (req: Request, res: Response) => {
+  const senderId = req.userId!;
 
   const now = Date.now();
   const last = lastCallAt.get(senderId) ?? 0;

@@ -69,7 +69,13 @@ struct HomeView: View {
             if let viewModel {
                 ForEach(viewModel.visible) { user in
                     Annotation("", coordinate: user.coordinate2D) {
-                        PresenceDotView(color: PresenceColors.dotColor(for: user.id.uuidString))
+                        Button {
+                            coordinator.present(.waveCompose(user))
+                        } label: {
+                            PresenceDotView(color: PresenceColors.dotColor(for: user.id.uuidString))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Wave at \(user.username)")
                     }
                     .annotationTitles(.hidden)
                 }

@@ -79,13 +79,13 @@
 - [x] TASK-011: Luma component + idle animation — `LumaView` is now Lottie-first with pure-SwiftUI fallback (`LumaPureView`); designer assets land under `Presence/Resources/Luma/` per the README spec
 
 ### Sprint 2 — Wave System
-- [ ] TASK-012: Tap-a-dot → wave preview sheet
-- [ ] TASK-013: Claude API icebreaker generation (backend)
-- [ ] TASK-014: WaveView — show icebreaker + wave button
-- [ ] TASK-015: Wave notification (push, Luma inline)
-- [ ] TASK-016: Wave response flow (accept/ignore)
-- [ ] TASK-017: 10-minute chat window (ChatView with countdown)
-- [ ] TASK-018: Connection recording + Luma celebration
+- [x] TASK-012: Tap-a-dot → wave preview sheet — `WaveComposeView` (sender side), wired off `HomeView` dot annotations
+- [x] TASK-013: Claude API icebreaker generation — backend route + iOS request flow (`/api/icebreaker` now JWT-authed)
+- [ ] TASK-014: WaveView — show icebreaker + wave button (existing `WaveReceivedView` still uses placeholder data; C4 wires it to `/api/waves`)
+- [x] TASK-015: Wave notification — backend push stub + iOS `NotificationService` + `AppDelegate` deep-link routing (real APNs send deferred to E6)
+- [x] TASK-016: Wave response flow (accept/decline) — backend `POST /api/waves/:id/respond` with mutual detection + connection insert
+- [ ] TASK-017: 10-minute chat window (ChatView with countdown) — C5
+- [ ] TASK-018: Connection recording + Luma celebration — backend records connection on mutual; iOS celebration UI is C6
 
 ### Sprint 3 — Monetization & Polish
 - [ ] TASK-019: RevenueCat integration

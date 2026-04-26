@@ -65,4 +65,8 @@ struct BackendEndpoint: Sendable {
     static func myWaves() -> BackendEndpoint {
         BackendEndpoint(.get, "/api/waves")
     }
+
+    static func registerPushToken() -> BackendEndpoint {
+        BackendEndpoint(.post, "/api/users/me/push-token")
+    }
 }

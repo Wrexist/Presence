@@ -1,7 +1,7 @@
 //  PresenceApp
 //  ServiceContainer.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — adds SocketService.
+//  Updated: 2026-04-26 — adds NotificationService.
 //  Purpose: Lightweight DI container. Holds service singletons that views
 //           read via @Environment. Use .live() in app, .preview() in #Previews.
 
@@ -17,8 +17,7 @@ final class ServiceContainer {
     let backend: BackendClient
     let presence: PresenceService
     let socket: SocketService
-
-    // MatchingService arrives in a later slice.
+    let notifications: NotificationService
 
     init(
         supabase: SupabaseClient,
@@ -26,7 +25,8 @@ final class ServiceContainer {
         location: LocationService,
         backend: BackendClient,
         presence: PresenceService,
-        socket: SocketService
+        socket: SocketService,
+        notifications: NotificationService
     ) {
         self.supabase = supabase
         self.auth = auth
@@ -34,6 +34,7 @@ final class ServiceContainer {
         self.backend = backend
         self.presence = presence
         self.socket = socket
+        self.notifications = notifications
     }
 
     static func live() -> ServiceContainer {
@@ -43,18 +44,18 @@ final class ServiceContainer {
         let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
+        let notifications = NotificationService(backend: backend)
         return ServiceContainer(
             supabase: client,
             auth: auth,
             location: location,
             backend: backend,
             presence: presence,
-            socket: socket
+            socket: socket,
+            notifications: notifications
         )
     }
 
-    /// Preview-safe container — same wiring, but no network requests will
-    /// fire from previews unless explicitly invoked.
     static func preview() -> ServiceContainer {
         let client = SupabaseClientFactory.make()
         let auth = AuthService(client: client)
@@ -62,13 +63,15 @@ final class ServiceContainer {
         let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
+        let notifications = NotificationService(backend: backend)
         return ServiceContainer(
             supabase: client,
             auth: auth,
             location: location,
             backend: backend,
             presence: presence,
-            socket: socket
+            socket: socket,
+            notifications: notifications
         )
     }
 }

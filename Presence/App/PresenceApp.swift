@@ -1,14 +1,17 @@
 //  PresenceApp
 //  PresenceApp.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — boot calls AuthService.restoreSession before routing.
-//  Purpose: App entry point. Wires ServiceContainer, AppCoordinator, and
-//           the root tab shell with modal presentation.
+//  Updated: 2026-04-26 — UIApplicationDelegateAdaptor for push device-token
+//                        + notification-tap deep-linking.
+//  Purpose: App entry point. Wires ServiceContainer, AppCoordinator,
+//           AppDelegate, and the root tab shell with modal presentation.
 
 import SwiftUI
 
 @main
 struct PresenceApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     @State private var coordinator = AppCoordinator()
     @State private var services = ServiceContainer.live()
 
@@ -20,13 +23,12 @@ struct PresenceApp: App {
                 .preferredColorScheme(.dark)
                 .tint(PresenceColors.auroraBlue)
                 .task {
+                    appDelegate.notifications = services.notifications
+                    appDelegate.coordinator = coordinator
+                    await services.notifications.refreshAuth()
                     await coordinator.boot(auth: services.auth)
                 }
                 .onChange(of: coordinator.route) { _, newRoute in
-                    // Socket connects once we land on .main (i.e. we have
-                    // a valid session) and disconnects on sign-out
-                    // (resetToOnboarding). One connection per app lifetime,
-                    // shared across tabs.
                     Task { @MainActor in
                         switch newRoute {
                         case .main:
@@ -77,6 +79,10 @@ private struct RootView: View {
             WaveReceivedView(wave: wave)
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
+        case .waveCompose(let target):
+            WaveComposeView(target: target)
+                .presentationDetents([.large])
+                .presentationBackground(.clear)
         }
     }
 }
@@ -112,6 +118,17 @@ private struct MainTabShell: View {
                 onGoPresent: { coordinator.present(.goPresent) }
             )
             .padding(.bottom, 12)
+        }
+        .onChange(of: coordinator.deepLink) { _, link in
+            // Push-tap deep-links route here. We jump to the Waves tab so
+            // the user lands somewhere the wave is visible — the WavesView
+            // hydration in C4 will surface the specific wave.
+            guard let link else { return }
+            switch link {
+            case .waveReceived, .waveMutual:
+                coordinator.tab = .waves
+            }
+            coordinator.consumeDeepLink()
         }
     }
 }

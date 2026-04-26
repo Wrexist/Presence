@@ -1,10 +1,11 @@
 //  PresenceApp
 //  AppCoordinator.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — added .launching state for async session restore.
+//  Updated: 2026-04-26 — adds deep-link state + waveCompose modal.
 //  Purpose: Root navigation state. Owns the top-level route, the current
-//           tab, any presented modal, and the persisted current user.
-//           Views read/write via @Environment.
+//           tab, any presented modal, deep-link payloads coming from push
+//           notifications, and the persisted current user. Views read/write
+//           via @Environment.
 
 import SwiftUI
 
@@ -20,18 +21,28 @@ final class AppCoordinator {
     enum Modal: Equatable, Identifiable {
         case goPresent
         case wave(IncomingWave)
+        case waveCompose(PresentUser)
 
         var id: String {
             switch self {
-            case .goPresent:     return "goPresent"
-            case .wave(let w):   return "wave-\(w.id)"
+            case .goPresent:                  return "goPresent"
+            case .wave(let w):                return "wave-\(w.id)"
+            case .waveCompose(let target):    return "waveCompose-\(target.id)"
             }
         }
+    }
+
+    /// Pending action handed off from a push-notification tap. Views consume
+    /// it via .onChange(of: coordinator.deepLink) and then clear it.
+    enum DeepLink: Equatable {
+        case waveReceived(id: UUID)
+        case waveMutual(id: UUID)
     }
 
     var route: Route = .launching
     var tab: AppTab = .map
     var modal: Modal?
+    var deepLink: DeepLink?
     var currentUser: User?
 
     /// Called once on launch with the live AuthService. Resolves a session
@@ -63,4 +74,6 @@ final class AppCoordinator {
 
     func present(_ modal: Modal) { self.modal = modal }
     func dismissModal() { self.modal = nil }
+
+    func consumeDeepLink() { self.deepLink = nil }
 }
