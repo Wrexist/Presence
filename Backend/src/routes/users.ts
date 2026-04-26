@@ -16,6 +16,42 @@ const PushTokenSchema = z.object({
   environment: z.enum(["production", "sandbox"]).default("sandbox")
 });
 
+const SubscriptionSyncSchema = z.object({
+  isPlus: z.boolean(),
+  expiresAt: z.string().datetime().nullable().optional()
+});
+
+usersRouter.post("/me/subscription", requireAuth, async (req: Request, res: Response) => {
+  const parsed = SubscriptionSyncSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_request", details: parsed.error.flatten() });
+    return;
+  }
+  const supabase = getSupabase();
+  if (!supabase) {
+    res.status(503).json({ error: "db_unavailable" });
+    return;
+  }
+
+  // TODO(E6): replace this client-trust path with a RevenueCat webhook
+  // that writes is_plus directly. Until then the iOS client tells us its
+  // entitlement state — only affects that user's own free-tier counter.
+  const { error } = await supabase
+    .from("users")
+    .update({
+      is_plus: parsed.data.isPlus,
+      plus_expires_at: parsed.data.expiresAt ?? null
+    })
+    .eq("id", req.userId!);
+
+  if (error) {
+    req.log.error({ err: error }, "subscription sync failed");
+    res.status(500).json({ error: "update_failed" });
+    return;
+  }
+  res.status(204).end();
+});
+
 usersRouter.post("/me/push-token", requireAuth, async (req: Request, res: Response) => {
   const parsed = PushTokenSchema.safeParse(req.body);
   if (!parsed.success) {

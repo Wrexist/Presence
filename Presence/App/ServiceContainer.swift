@@ -1,8 +1,7 @@
 //  PresenceApp
 //  ServiceContainer.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — hoists WavesViewModel so it's shared across the
-//                        Waves tab and the wave-received modal.
+//  Updated: 2026-04-26 — adds SubscriptionService.
 //  Purpose: Lightweight DI container. Holds service singletons that views
 //           read via @Environment. Use .live() in app, .preview() in #Previews.
 
@@ -19,8 +18,7 @@ final class ServiceContainer {
     let presence: PresenceService
     let socket: SocketService
     let notifications: NotificationService
-
-    /// Shared waves state — the tab and the modal both observe this.
+    let subscription: SubscriptionService
     let wavesViewModel: WavesViewModel
 
     init(
@@ -31,6 +29,7 @@ final class ServiceContainer {
         presence: PresenceService,
         socket: SocketService,
         notifications: NotificationService,
+        subscription: SubscriptionService,
         wavesViewModel: WavesViewModel
     ) {
         self.supabase = supabase
@@ -40,6 +39,7 @@ final class ServiceContainer {
         self.presence = presence
         self.socket = socket
         self.notifications = notifications
+        self.subscription = subscription
         self.wavesViewModel = wavesViewModel
     }
 
@@ -51,6 +51,7 @@ final class ServiceContainer {
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         let notifications = NotificationService(backend: backend)
+        let subscription = SubscriptionService(backend: backend)
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         return ServiceContainer(
             supabase: client,
@@ -60,6 +61,7 @@ final class ServiceContainer {
             presence: presence,
             socket: socket,
             notifications: notifications,
+            subscription: subscription,
             wavesViewModel: wavesViewModel
         )
     }
@@ -72,6 +74,7 @@ final class ServiceContainer {
         let presence = PresenceService(backend: backend, location: location)
         let socket = SocketService(baseURL: Config.backendURL, auth: auth)
         let notifications = NotificationService(backend: backend)
+        let subscription = SubscriptionService(backend: backend)
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         return ServiceContainer(
             supabase: client,
@@ -81,6 +84,7 @@ final class ServiceContainer {
             presence: presence,
             socket: socket,
             notifications: notifications,
+            subscription: subscription,
             wavesViewModel: wavesViewModel
         )
     }

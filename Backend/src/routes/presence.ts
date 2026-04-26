@@ -78,6 +78,39 @@ presenceRouter.post("/", requireAuth, async (req: Request, res: Response) => {
   const expiresAt = new Date(Date.now() + durationMinutes * 60_000).toISOString();
   const wkt = `SRID=4326;POINT(${location.lng} ${location.lat})`;
 
+  // ─ Free-tier gate ─────────────────────────────────────────────────────
+  // Free users get 3 Presences per ISO week. Plus users are uncapped.
+  // The week boundary is Mon 00:00 UTC — same definition the profile
+  // chip surfaces, so the user's mental model matches the server's.
+  const userResp = await supabase
+    .from("users")
+    .select("is_plus")
+    .eq("id", req.userId!)
+    .single();
+  const userRow = userResp.data as { is_plus: boolean } | null;
+  const isPlus = userRow?.is_plus ?? false;
+
+  if (!isPlus) {
+    const weekStart = isoWeekStart(new Date());
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const countResp = await supabase
+      .from("presences")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", req.userId!)
+      .gte("started_at", weekStart.toISOString())
+      .lt("started_at", weekEnd.toISOString());
+
+    const used = countResp.count ?? 0;
+    if (used >= 3) {
+      res.status(402).json({
+        error: "free_limit",
+        weeklyUsed: used,
+        resetsAt: weekEnd.toISOString()
+      });
+      return;
+    }
+  }
+
   const insertResp = await supabase
     .from("presences")
     .insert({
@@ -206,6 +239,15 @@ presenceRouter.delete("/:id", requireAuth, async (req: Request, res: Response) =
   // a typical REST pattern and keeps the iOS client simple.
   res.status(204).end();
 });
+
+/// First moment of the ISO week (Monday 00:00 UTC) containing `now`.
+function isoWeekStart(now: Date): Date {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  // getUTCDay: Sun=0..Sat=6. ISO week starts Monday: shift Sun -> 6, others -> day-1.
+  const dayOfWeek = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayOfWeek);
+  return d;
+}
 
 function extractLngLat(loc: unknown): { lat: number; lng: number } | null {
   // PostGIS returns GeoJSON when selected if Supabase's GeoJSON output is

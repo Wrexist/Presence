@@ -24,6 +24,7 @@ final class AppCoordinator {
         case waveCompose(PresentUser)
         case celebration(CelebrationContext)
         case chat(roomId: UUID, otherUsername: String)
+        case paywall(PaywallContext)
 
         var id: String {
             switch self {
@@ -32,7 +33,27 @@ final class AppCoordinator {
             case .waveCompose(let target):    return "waveCompose-\(target.id)"
             case .celebration(let ctx):       return "celebration-\(ctx.waveId)"
             case .chat(let roomId, _):        return "chat-\(roomId.uuidString)"
+            case .paywall(let ctx):           return "paywall-\(ctx.id)"
             }
+        }
+    }
+
+    /// Why the paywall is being shown. The free-limit context drives
+    /// extra copy ("You've hit this week's 3 free Presences"). A plain
+    /// upsell context is for "Upgrade" buttons in profile/settings.
+    struct PaywallContext: Equatable, Sendable, Identifiable {
+        let id: UUID
+        let reason: Reason
+
+        enum Reason: Equatable, Sendable {
+            case freeLimit(weeklyUsed: Int, resetsAt: Date?)
+            case upsell
+        }
+
+        static let upsell = PaywallContext(id: UUID(), reason: .upsell)
+
+        static func freeLimit(weeklyUsed: Int, resetsAt: Date?) -> PaywallContext {
+            PaywallContext(id: UUID(), reason: .freeLimit(weeklyUsed: weeklyUsed, resetsAt: resetsAt))
         }
     }
 

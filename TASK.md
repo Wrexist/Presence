@@ -88,9 +88,9 @@
 - [x] TASK-018: Connection recording + Luma celebration — `CelebrationView` triggered globally on `wave_mutual`; milestone copy at 1/5/10/25
 
 ### Sprint 3 — Monetization & Polish
-- [ ] TASK-019: RevenueCat integration
-- [ ] TASK-020: Paywall screen (Presence+)
-- [ ] TASK-021: Free tier enforcement (3 presences/week)
+- [x] TASK-019: RevenueCat integration — `SubscriptionService` (D1)
+- [x] TASK-020: Paywall screen (Presence+) — `Features/Paywall/PaywallView` (D2)
+- [x] TASK-021: Free tier enforcement (3 presences/week) — server-side ISO-week count returns 402; client routes to paywall (D3)
 - [ ] TASK-022: Profile screen + connection history
 - [ ] TASK-023: Block/report flow
 - [ ] TASK-024: Privacy screen + data export

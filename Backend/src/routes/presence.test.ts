@@ -44,6 +44,7 @@ function authedUser(id = "11111111-1111-1111-1111-111111111111") {
 interface BuilderResponse {
   data: unknown;
   error: unknown;
+  count?: number;
 }
 
 function buildBuilder(response: BuilderResponse) {
@@ -52,6 +53,8 @@ function buildBuilder(response: BuilderResponse) {
     select: () => builder,
     update: () => builder,
     eq: () => builder,
+    gte: () => builder,
+    lt: () => builder,
     single: () => builder,
     maybeSingle: () => builder,
     then: (resolve: (value: BuilderResponse) => unknown) =>
@@ -84,9 +87,13 @@ describe("POST /api/presence", () => {
   it("inserts and broadcasts presence_joined", async () => {
     authedUser("user-1");
     const expiresAt = "2026-04-26T20:00:00.000Z";
-    supabaseMock.from.mockReturnValue(
-      buildBuilder({ data: { id: "p-1", expires_at: expiresAt }, error: null })
-    );
+    // Calls in order: user lookup (is_plus), weekly count, presence insert.
+    supabaseMock.from
+      .mockReturnValueOnce(buildBuilder({ data: { is_plus: false }, error: null }))
+      .mockReturnValueOnce(buildBuilder({ data: null, error: null, count: 0 }))
+      .mockReturnValueOnce(
+        buildBuilder({ data: { id: "p-1", expires_at: expiresAt }, error: null })
+      );
 
     const res = await request(app)
       .post("/api/presence")
@@ -106,11 +113,46 @@ describe("POST /api/presence", () => {
     expect(payload).toMatchObject({ id: "p-1", lat: 37.77, lng: -122.42 });
   });
 
+  it("returns 402 free_limit when a non-plus user has 3 presences this week", async () => {
+    authedUser("user-1");
+    supabaseMock.from
+      .mockReturnValueOnce(buildBuilder({ data: { is_plus: false }, error: null }))
+      .mockReturnValueOnce(buildBuilder({ data: null, error: null, count: 3 }));
+
+    const res = await request(app)
+      .post("/api/presence")
+      .set("Authorization", "Bearer t")
+      .send({ location: { lat: 37.77, lng: -122.42 } });
+
+    expect(res.status).toBe(402);
+    expect(res.body).toMatchObject({ error: "free_limit", weeklyUsed: 3 });
+    expect(res.body.resetsAt).toEqual(expect.any(String));
+    expect(broadcastMock).not.toHaveBeenCalled();
+  });
+
+  it("skips the limit check for plus users", async () => {
+    authedUser("user-1");
+    const expiresAt = "2026-04-26T20:00:00.000Z";
+    // Only 2 calls: user lookup (is_plus=true skips count), then insert.
+    supabaseMock.from
+      .mockReturnValueOnce(buildBuilder({ data: { is_plus: true }, error: null }))
+      .mockReturnValueOnce(
+        buildBuilder({ data: { id: "p-2", expires_at: expiresAt }, error: null })
+      );
+
+    const res = await request(app)
+      .post("/api/presence")
+      .set("Authorization", "Bearer t")
+      .send({ location: { lat: 37.77, lng: -122.42 } });
+
+    expect(res.status).toBe(201);
+  });
+
   it("returns 500 if the insert fails", async () => {
     authedUser();
-    supabaseMock.from.mockReturnValue(
-      buildBuilder({ data: null, error: { message: "boom" } })
-    );
+    supabaseMock.from
+      .mockReturnValueOnce(buildBuilder({ data: { is_plus: true }, error: null }))
+      .mockReturnValueOnce(buildBuilder({ data: null, error: { message: "boom" } }));
     const res = await request(app)
       .post("/api/presence")
       .set("Authorization", "Bearer t")

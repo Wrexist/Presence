@@ -128,6 +128,16 @@ struct GoPresentView: View {
             do {
                 try await services.presence.activate()
             } catch let error as BackendError {
+                if case let .freeLimitReached(weeklyUsed, resetsAt) = error {
+                    // Hand off to the paywall instead of inlining an error.
+                    coordinator.dismissModal()
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    coordinator.present(.paywall(.freeLimit(
+                        weeklyUsed: weeklyUsed,
+                        resetsAt: resetsAt
+                    )))
+                    return
+                }
                 errorMessage = userFacing(error)
             } catch {
                 errorMessage = "Couldn't start glowing. Try again?"

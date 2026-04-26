@@ -77,4 +77,8 @@ struct BackendEndpoint: Sendable {
     static func registerPushToken() -> BackendEndpoint {
         BackendEndpoint(.post, "/api/users/me/push-token")
     }
+
+    static func syncSubscription() -> BackendEndpoint {
+        BackendEndpoint(.post, "/api/users/me/subscription")
+    }
 }

@@ -25,6 +25,7 @@ struct PresenceApp: App {
                 .task {
                     appDelegate.notifications = services.notifications
                     appDelegate.coordinator = coordinator
+                    services.subscription.configureIfNeeded()
                     await services.notifications.refreshAuth()
                     await coordinator.boot(auth: services.auth)
                 }
@@ -33,11 +34,12 @@ struct PresenceApp: App {
                         switch newRoute {
                         case .main:
                             await services.socket.connect()
-                            // Start the shared WavesViewModel so mutual
-                            // events trigger the celebration regardless of
-                            // which tab is on screen.
                             await services.wavesViewModel.start()
+                            if let userId = coordinator.currentUser?.id {
+                                await services.subscription.identify(userId: userId)
+                            }
                         case .onboarding:
+                            await services.subscription.signOut()
                             services.wavesViewModel.stop()
                             services.socket.disconnect()
                         case .launching:
@@ -111,6 +113,10 @@ private struct RootView: View {
             .presentationBackground(.clear)
         case .chat(let roomId, let otherUsername):
             ChatView(roomId: roomId, otherUsername: otherUsername)
+                .presentationDetents([.large])
+                .presentationBackground(.clear)
+        case .paywall:
+            PaywallView()
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
         }
