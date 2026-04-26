@@ -48,7 +48,12 @@ actor BackendClient {
         _ endpoint: BackendEndpoint,
         as type: Response.Type = Response.self
     ) async throws -> Response {
-        try await send(endpoint, body: Optional<EmptyBody>.none)
+        let data = try await sendRaw(endpoint, body: Optional<EmptyBody>.none)
+        do {
+            return try decoder.decode(Response.self, from: data)
+        } catch {
+            throw BackendError.decode
+        }
     }
 
     /// POST/PATCH/DELETE with an Encodable body. The body is omitted on DELETE.
@@ -65,11 +70,17 @@ actor BackendClient {
         }
     }
 
-    /// Discardable variant when only the status code matters.
+    /// Discardable, no-body variant when only the status code matters.
+    @discardableResult
+    func sendVoid(_ endpoint: BackendEndpoint) async throws -> Data {
+        try await sendRaw(endpoint, body: Optional<EmptyBody>.none)
+    }
+
+    /// Discardable variant with a body — used for fire-and-forget POSTs.
     @discardableResult
     func sendVoid<Body: Encodable & Sendable>(
         _ endpoint: BackendEndpoint,
-        body: Body? = Optional<EmptyBody>.none
+        body: Body
     ) async throws -> Data {
         try await sendRaw(endpoint, body: body)
     }

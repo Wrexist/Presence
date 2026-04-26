@@ -1,7 +1,7 @@
 //  PresenceApp
 //  ServiceContainer.swift
 //  Created: 2026-04-24
-//  Updated: 2026-04-26 — owns the shared SupabaseClient + AuthService.
+//  Updated: 2026-04-26 — adds PresenceService wired to BackendClient + LocationService.
 //  Purpose: Lightweight DI container. Holds service singletons that views
 //           read via @Environment. Use .live() in app, .preview() in #Previews.
 
@@ -15,42 +15,53 @@ final class ServiceContainer {
     let auth: AuthService
     let location: LocationService
     let backend: BackendClient
+    let presence: PresenceService
 
-    // PresenceService, MatchingService, SocketService arrive in later slices.
+    // MatchingService, SocketService arrive in later slices.
 
     init(
         supabase: SupabaseClient,
         auth: AuthService,
         location: LocationService,
-        backend: BackendClient
+        backend: BackendClient,
+        presence: PresenceService
     ) {
         self.supabase = supabase
         self.auth = auth
         self.location = location
         self.backend = backend
+        self.presence = presence
     }
 
     static func live() -> ServiceContainer {
         let client = SupabaseClientFactory.make()
         let auth = AuthService(client: client)
+        let location = LocationService()
+        let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
+        let presence = PresenceService(backend: backend, location: location)
         return ServiceContainer(
             supabase: client,
             auth: auth,
-            location: LocationService(),
-            backend: BackendClient(baseURL: Config.backendURL, authProvider: auth)
+            location: location,
+            backend: backend,
+            presence: presence
         )
     }
 
-    /// Preview-safe container — same wiring, but keychain writes are namespaced
-    /// and no network requests will fire from previews unless explicitly invoked.
+    /// Preview-safe container — same wiring, but no network requests will
+    /// fire from previews unless explicitly invoked.
     static func preview() -> ServiceContainer {
         let client = SupabaseClientFactory.make()
         let auth = AuthService(client: client)
+        let location = LocationService()
+        let backend = BackendClient(baseURL: Config.backendURL, authProvider: auth)
+        let presence = PresenceService(backend: backend, location: location)
         return ServiceContainer(
             supabase: client,
             auth: auth,
-            location: LocationService(),
-            backend: BackendClient(baseURL: Config.backendURL, authProvider: auth)
+            location: location,
+            backend: backend,
+            presence: presence
         )
     }
 }
