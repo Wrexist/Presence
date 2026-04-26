@@ -91,14 +91,11 @@ openssl pkcs12 -export -legacy \
 
 When prompted for an export password, enter one and **remember it** — that's your `APPLE_CERTIFICATE_PASSWORD` secret.
 
-### 3d. Base64-encode the `.p12` for the GitHub secret
+### 3d. Base64-encode the `.p12` directly to your clipboard
 
-**Git Bash / WSL / Linux / macOS:**
-```bash
-base64 -w 0 PresenceDistribution.p12 > PresenceDistribution.p12.b64
-# then open PresenceDistribution.p12.b64 in any text editor and copy its contents
-```
-On macOS replace `-w 0` with `-b 0`. On macOS you can also pipe to `pbcopy`; on Windows Git Bash, pipe to `clip` instead:
+Pick the command that matches your shell. **None of these write the encoded cert to disk** — the encoded payload is just as sensitive as the `.p12` itself, so we keep it in memory only and paste it straight into the GitHub secret.
+
+**Git Bash on Windows:**
 ```bash
 base64 -w 0 PresenceDistribution.p12 | clip
 ```
@@ -108,7 +105,18 @@ base64 -w 0 PresenceDistribution.p12 | clip
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("PresenceDistribution.p12")) | Set-Clipboard
 ```
 
-That clipboard contents is your `APPLE_CERTIFICATE_BASE64` secret.
+**macOS:**
+```bash
+base64 -i PresenceDistribution.p12 | pbcopy
+```
+
+**WSL / Linux:** install `wl-clipboard` or `xclip` first, then:
+```bash
+base64 -w 0 PresenceDistribution.p12 | wl-copy
+# or: base64 -w 0 PresenceDistribution.p12 | xclip -selection clipboard
+```
+
+The clipboard contents is your `APPLE_CERTIFICATE_BASE64` secret — paste it into GitHub immediately (Step 6).
 
 ### 3e. Clean up
 
