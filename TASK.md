@@ -91,10 +91,10 @@
 - [x] TASK-019: RevenueCat integration — `SubscriptionService` (D1)
 - [x] TASK-020: Paywall screen (Presence+) — `Features/Paywall/PaywallView` (D2)
 - [x] TASK-021: Free tier enforcement (3 presences/week) — server-side ISO-week count returns 402; client routes to paywall (D3)
-- [ ] TASK-022: Profile screen + connection history
-- [ ] TASK-023: Block/report flow
-- [ ] TASK-024: Privacy screen + data export
-- [ ] TASK-025: Settings screen
+- [x] TASK-022: Profile screen + connection history — `ProfileViewModel`, edit username/bio, weekly chip for free users, journey 7-day chart wired to `/api/users/me/journey` (D4)
+- [x] TASK-023: Block/report flow — `/api/blocks` + `/api/reports` + `SafetySheet` reachable from compose / received / chat in ≤2 taps (D6)
+- [x] TASK-024: Privacy screen + data export — `PrivacyView` with blocked-user list + JSON share-sheet export of `/api/users/me/export` (D5)
+- [x] TASK-025: Settings screen — `SettingsView` with subscription status, sign-out + delete-account confirms (D5)
 - [ ] TASK-026: Luma full state machine + all animations
 
 ### Sprint 4 — Beta

@@ -119,6 +119,26 @@ private struct RootView: View {
             PaywallView()
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
+        case .safety(let ctx):
+            SafetySheet(
+                target: SafetySheet.Target(
+                    userId: ctx.userId,
+                    username: ctx.username,
+                    referenceId: ctx.referenceId
+                ),
+                context: ctx.context,
+                onComplete: { _ in }
+            )
+            .presentationDetents([.medium])
+            .presentationBackground(.clear)
+        case .settings:
+            SettingsView()
+                .presentationDetents([.large])
+                .presentationBackground(.clear)
+        case .privacy:
+            PrivacyView()
+                .presentationDetents([.large])
+                .presentationBackground(.clear)
         }
     }
 }

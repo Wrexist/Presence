@@ -85,6 +85,17 @@ struct WaveComposeView: View {
                 coordinator.dismissModal()
             }
             Spacer()
+            GlassIconButton(systemImage: "flag", accessibilityLabel: "Block or report") {
+                coordinator.dismissModal()
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    coordinator.present(.safety(.init(
+                        userId: target.userId,
+                        username: target.username,
+                        context: .presence
+                    )))
+                }
+            }
         }
         .padding(.top, 8)
     }

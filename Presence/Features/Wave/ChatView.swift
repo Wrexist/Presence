@@ -73,6 +73,31 @@ struct ChatView: View {
             }
             Spacer()
             countdownChip
+            GlassIconButton(systemImage: "flag", accessibilityLabel: "Block or report") {
+                openSafety()
+            }
+        }
+    }
+
+    /// Resolves the other participant's id from the loaded room, then
+    /// dismisses chat and opens the safety sheet.
+    private func openSafety() {
+        guard
+            let me = coordinator.currentUser?.id,
+            let room = viewModel?.room
+        else { return }
+        let otherId = room.otherParticipant(from: me)
+        let username = otherUsername
+        let roomId = self.roomId
+        coordinator.dismissModal()
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            coordinator.present(.safety(.init(
+                userId: otherId,
+                username: username,
+                context: .chat,
+                referenceId: roomId
+            )))
         }
     }
 

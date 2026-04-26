@@ -65,8 +65,19 @@ struct WaveReceivedView: View {
                 coordinator.dismissModal()
             }
             Spacer()
-            GlassIconButton(systemImage: "flag", accessibilityLabel: "Report or block") {
-                // TODO(D6): block / report sheet.
+            GlassIconButton(systemImage: "flag", accessibilityLabel: "Block or report") {
+                coordinator.dismissModal()
+                let other = self.other
+                let waveId = wave.id
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    coordinator.present(.safety(.init(
+                        userId: other.id,
+                        username: other.username,
+                        context: .wave,
+                        referenceId: waveId
+                    )))
+                }
             }
         }
         .padding(.top, 8)

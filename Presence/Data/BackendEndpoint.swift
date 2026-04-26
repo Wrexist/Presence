@@ -81,4 +81,40 @@ struct BackendEndpoint: Sendable {
     static func syncSubscription() -> BackendEndpoint {
         BackendEndpoint(.post, "/api/users/me/subscription")
     }
+
+    static func meProfile() -> BackendEndpoint {
+        BackendEndpoint(.get, "/api/users/me")
+    }
+
+    static func updateProfile() -> BackendEndpoint {
+        BackendEndpoint(.patch, "/api/users/me")
+    }
+
+    static func deleteAccount() -> BackendEndpoint {
+        BackendEndpoint(.delete, "/api/users/me")
+    }
+
+    static func journey() -> BackendEndpoint {
+        BackendEndpoint(.get, "/api/users/me/journey")
+    }
+
+    static func dataExport() -> BackendEndpoint {
+        BackendEndpoint(.get, "/api/users/me/export")
+    }
+
+    static func listBlocks() -> BackendEndpoint {
+        BackendEndpoint(.get, "/api/blocks")
+    }
+
+    static func block() -> BackendEndpoint {
+        BackendEndpoint(.post, "/api/blocks")
+    }
+
+    static func unblock(userId: UUID) -> BackendEndpoint {
+        BackendEndpoint(.delete, "/api/blocks/\(userId.uuidString)")
+    }
+
+    static func report() -> BackendEndpoint {
+        BackendEndpoint(.post, "/api/reports")
+    }
 }

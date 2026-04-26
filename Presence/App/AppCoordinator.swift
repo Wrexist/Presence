@@ -25,6 +25,9 @@ final class AppCoordinator {
         case celebration(CelebrationContext)
         case chat(roomId: UUID, otherUsername: String)
         case paywall(PaywallContext)
+        case safety(SafetyContext)
+        case settings
+        case privacy
 
         var id: String {
             switch self {
@@ -34,7 +37,34 @@ final class AppCoordinator {
             case .celebration(let ctx):       return "celebration-\(ctx.waveId)"
             case .chat(let roomId, _):        return "chat-\(roomId.uuidString)"
             case .paywall(let ctx):           return "paywall-\(ctx.id)"
+            case .safety(let ctx):            return "safety-\(ctx.id)"
+            case .settings:                   return "settings"
+            case .privacy:                    return "privacy"
             }
+        }
+    }
+
+    /// Identifies which user the safety sheet acts on, plus the context
+    /// that surfaced it (wave / chat / presence / other) for report
+    /// triage.
+    struct SafetyContext: Equatable, Sendable, Identifiable {
+        let id: UUID
+        let userId: UUID
+        let username: String
+        let context: ReportRequest.Context
+        let referenceId: UUID?
+
+        init(
+            userId: UUID,
+            username: String,
+            context: ReportRequest.Context,
+            referenceId: UUID? = nil
+        ) {
+            self.id = UUID()
+            self.userId = userId
+            self.username = username
+            self.context = context
+            self.referenceId = referenceId
         }
     }
 
