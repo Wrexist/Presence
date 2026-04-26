@@ -100,8 +100,8 @@
 ### Sprint 4 — Beta
 - [ ] TASK-027: App Store Connect setup
 - [ ] TASK-028: TestFlight distribution
-- [ ] TASK-029: Analytics (PostHog)
-- [ ] TASK-030: Crash reporting (Sentry)
+- [x] TASK-029: Analytics (PostHog) — `AnalyticsService` actor with typed events; identify on `.main`, reset on `.onboarding`; events fire from onboarding/presence/wave/paywall surfaces (E2)
+- [x] TASK-030: Crash reporting (Sentry) — iOS `CrashReportingService` (no screenshots/view-hierarchy/IP); Node `sentry.ts` with PII scrubbing + `/debug-sentry` (E3)
 - [ ] TASK-031: ASO — screenshots, description, keywords
 - [ ] TASK-032: Venue partner B2B backend
 

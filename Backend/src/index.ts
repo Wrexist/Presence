@@ -8,8 +8,13 @@ import pino from "pino";
 
 import { createApp } from "./app.js";
 import { config, featureFlags } from "./config.js";
+import { initSentry } from "./sentry.js";
 import { setIO } from "./services/socketHub.js";
 import { attachWebSocket } from "./websocket/index.js";
+
+// Sentry must init before any handlers are constructed so the request
+// handler middleware can be registered cleanly inside createApp().
+initSentry();
 
 const logger = pino({ level: config.LOG_LEVEL });
 const app = createApp(logger);

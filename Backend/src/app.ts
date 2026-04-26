@@ -9,8 +9,10 @@ import pinoHttp from "pino-http";
 import pino, { type Logger } from "pino";
 
 import { config } from "./config.js";
+import { attachSentry } from "./sentry.js";
 import { blocksRouter } from "./routes/blocks.js";
 import { chatRouter } from "./routes/chat.js";
+import { debugSentryRouter } from "./routes/debugSentry.js";
 import { healthRouter } from "./routes/health.js";
 import { icebreakerRouter } from "./routes/icebreaker.js";
 import { presenceRouter } from "./routes/presence.js";
@@ -46,9 +48,19 @@ export function createApp(logger: Logger = pino({ level: config.LOG_LEVEL })): e
   app.use("/api/users", usersRouter);
   app.use("/api/waves", wavesRouter);
 
+  if (config.NODE_ENV !== "production") {
+    app.use("/debug-sentry", debugSentryRouter);
+  }
+
   app.use((req, res) => {
     res.status(404).json({ error: "not_found", path: req.path });
   });
+
+  // Sentry's error handler must come BEFORE our own — it captures the
+  // exception, then our handler (with `next(err)` semantics elided since
+  // we always send the response here) shapes the JSON body. attachSentry
+  // is a no-op when SENTRY_DSN is unset.
+  attachSentry(app);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: HttpError, req: Request, res: Response, _next: NextFunction) => {

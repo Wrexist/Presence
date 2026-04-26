@@ -27,6 +27,9 @@ enum Config {
     }()
 
     static let revenueCatAPIKey: String = optional("REVENUECAT_API_KEY") ?? ""
+    static let posthogAPIKey: String = optional("POSTHOG_API_KEY") ?? ""
+    static let posthogHost: String = optional("POSTHOG_HOST") ?? "https://us.i.posthog.com"
+    static let sentryDSN: String = optional("SENTRY_DSN") ?? ""
 
     private static func required(_ key: String) -> String {
         if let v = readValue(for: key), !v.isEmpty { return v }

@@ -22,6 +22,8 @@ final class ServiceContainer {
     let wavesViewModel: WavesViewModel
     let profileViewModel: ProfileViewModel
     let luma: LumaCoordinator
+    let analytics: AnalyticsService
+    let crashReporting: CrashReportingService
 
     init(
         supabase: SupabaseClient,
@@ -34,7 +36,9 @@ final class ServiceContainer {
         subscription: SubscriptionService,
         wavesViewModel: WavesViewModel,
         profileViewModel: ProfileViewModel,
-        luma: LumaCoordinator
+        luma: LumaCoordinator,
+        analytics: AnalyticsService,
+        crashReporting: CrashReportingService
     ) {
         self.supabase = supabase
         self.auth = auth
@@ -47,6 +51,8 @@ final class ServiceContainer {
         self.wavesViewModel = wavesViewModel
         self.profileViewModel = profileViewModel
         self.luma = luma
+        self.analytics = analytics
+        self.crashReporting = crashReporting
     }
 
     static func live() -> ServiceContainer {
@@ -61,6 +67,8 @@ final class ServiceContainer {
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         let profileViewModel = ProfileViewModel(backend: backend)
         let luma = LumaCoordinator(presence: presence, waves: wavesViewModel)
+        let analytics = AnalyticsService()
+        let crashReporting = CrashReportingService()
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -72,7 +80,9 @@ final class ServiceContainer {
             subscription: subscription,
             wavesViewModel: wavesViewModel,
             profileViewModel: profileViewModel,
-            luma: luma
+            luma: luma,
+            analytics: analytics,
+            crashReporting: crashReporting
         )
     }
 
@@ -88,6 +98,8 @@ final class ServiceContainer {
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         let profileViewModel = ProfileViewModel(backend: backend)
         let luma = LumaCoordinator(presence: presence, waves: wavesViewModel)
+        let analytics = AnalyticsService()
+        let crashReporting = CrashReportingService()
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -99,7 +111,9 @@ final class ServiceContainer {
             subscription: subscription,
             wavesViewModel: wavesViewModel,
             profileViewModel: profileViewModel,
-            luma: luma
+            luma: luma,
+            analytics: analytics,
+            crashReporting: crashReporting
         )
     }
 }

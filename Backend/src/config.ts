@@ -16,6 +16,9 @@ const schema = z.object({
 
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
 
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
+
   CORS_ORIGINS: z
     .string()
     .default("")
@@ -50,5 +53,6 @@ export const config = parsed.data;
 
 export const featureFlags = {
   supabaseEnabled: Boolean(config.SUPABASE_URL && config.SUPABASE_SERVICE_ROLE_KEY),
-  anthropicEnabled: Boolean(config.ANTHROPIC_API_KEY)
+  anthropicEnabled: Boolean(config.ANTHROPIC_API_KEY),
+  sentryEnabled: Boolean(config.SENTRY_DSN)
 };

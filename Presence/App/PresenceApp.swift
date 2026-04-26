@@ -25,9 +25,11 @@ struct PresenceApp: App {
                 .task {
                     appDelegate.notifications = services.notifications
                     appDelegate.coordinator = coordinator
+                    services.crashReporting.configureIfNeeded()
+                    await services.analytics.configureIfNeeded()
                     services.subscription.configureIfNeeded()
                     await services.notifications.refreshAuth()
-                    await coordinator.boot(auth: services.auth)
+                    await coordinator.boot(auth: services.auth, analytics: services.analytics)
                 }
                 .onChange(of: coordinator.route) { _, newRoute in
                     Task { @MainActor in
@@ -38,10 +40,14 @@ struct PresenceApp: App {
                             services.luma.start()
                             if let userId = coordinator.currentUser?.id {
                                 await services.subscription.identify(userId: userId)
+                                await services.analytics.identify(userId: userId)
+                                services.crashReporting.identify(userId: userId)
                             }
                         case .onboarding:
                             services.luma.stop()
                             await services.subscription.signOut()
+                            await services.analytics.reset()
+                            services.crashReporting.clearUser()
                             services.wavesViewModel.stop()
                             services.socket.disconnect()
                         case .launching:
@@ -66,7 +72,7 @@ private struct RootView: View {
                 LaunchView()
             case .onboarding:
                 OnboardingView(auth: services.auth) { user in
-                    coordinator.completeOnboarding(with: user)
+                    coordinator.completeOnboarding(with: user, analytics: services.analytics)
                 }
             case .main:
                 MainTabShell()

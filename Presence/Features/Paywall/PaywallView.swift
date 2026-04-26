@@ -268,8 +268,7 @@ struct PaywallView: View {
         guard let pkg = selectedPackage else { return }
         let success = await services.subscription.purchase(pkg)
         if success {
-            // Brief beat so the user sees the unlocked state, then dismiss
-            // back to whatever screen triggered the paywall.
+            await services.analytics.capture(.paywallPurchased(plan: selectedPlan.rawValue))
             try? await Task.sleep(nanoseconds: 500_000_000)
             coordinator.dismissModal()
         } else if let last = services.subscription.lastError {
@@ -281,6 +280,7 @@ struct PaywallView: View {
         errorMessage = nil
         let restored = await services.subscription.restore()
         if restored {
+            await services.analytics.capture(.paywallRestored)
             coordinator.dismissModal()
         } else {
             errorMessage = "No previous purchases found on this Apple ID."

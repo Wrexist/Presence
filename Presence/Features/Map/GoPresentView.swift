@@ -110,6 +110,7 @@ struct GoPresentView: View {
             isRequesting = true
             services.location.stopUpdating()
             await services.presence.deactivate()
+            await services.analytics.capture(.presenceDeactivated(reason: .manual))
             isRequesting = false
             return
         }
@@ -122,14 +123,14 @@ struct GoPresentView: View {
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             services.location.startUpdating()
-            // Wait briefly for a first fix — the privacy-reduced helper
-            // returns nil until the manager has at least one location.
             await waitForFirstFix()
             do {
                 try await services.presence.activate()
+                await services.analytics.capture(.presenceActivated(durationMinutes: 180))
             } catch let error as BackendError {
+                services.crashReporting.breadcrumb(error: error, location: "GoPresentView.handleGoPresent")
                 if case let .freeLimitReached(weeklyUsed, resetsAt) = error {
-                    // Hand off to the paywall instead of inlining an error.
+                    await services.analytics.capture(.paywallShown(reason: .freeLimit))
                     coordinator.dismissModal()
                     try? await Task.sleep(nanoseconds: 300_000_000)
                     coordinator.present(.paywall(.freeLimit(

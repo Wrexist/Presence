@@ -110,8 +110,11 @@ final class AppCoordinator {
     var deepLink: DeepLink?
     var currentUser: User?
 
-    func boot(auth: AuthService) async {
+    func boot(auth: AuthService, analytics: AnalyticsService? = nil) async {
         let restored = await auth.restoreSession()
+        if restored == nil {
+            await analytics?.capture(.onboardingStarted)
+        }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             if let user = restored {
                 self.currentUser = user
@@ -122,8 +125,9 @@ final class AppCoordinator {
         }
     }
 
-    func completeOnboarding(with user: User) {
+    func completeOnboarding(with user: User, analytics: AnalyticsService? = nil) {
         currentUser = user
+        Task { await analytics?.capture(.onboardingCompleted) }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             route = .main
         }

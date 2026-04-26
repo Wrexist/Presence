@@ -238,12 +238,16 @@ struct WaveComposeView: View {
         let body = SendWaveRequest(receiverId: target.userId, icebreaker: icebreaker)
         do {
             let _: SendWaveResponse = try await services.backend.send(.sendWave(), body: body)
+            await services.analytics.capture(
+                .waveSent(icebreakerSource: icebreakerSource?.rawValue ?? "unknown")
+            )
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 didSend = true
             }
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             coordinator.dismissModal()
         } catch let error as BackendError {
+            services.crashReporting.breadcrumb(error: error, location: "WaveComposeView.sendWave")
             errorMessage = userFacing(error)
         } catch {
             errorMessage = "Couldn't send. Try again?"
