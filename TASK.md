@@ -104,7 +104,10 @@
 - [x] TASK-030: Crash reporting (Sentry) — iOS `CrashReportingService` (no screenshots/view-hierarchy/IP); Node `sentry.ts` with PII scrubbing + `/debug-sentry` (E3)
 - [x] TASK-031: ASO — screenshots specs + description + keywords + age rating in `docs/app-store.md` (E4)
 - [x] TASK-031a: Privacy + Terms drafts — `legal/privacy.md` + `legal/terms.md` (E5)
-- [ ] TASK-032: Venue partner B2B backend
+- [ ] TASK-032: Venue partner B2B backend — design spec'd in `docs/venue-partners.md` (F.3); implementation post-launch (Month 2+)
+- [ ] TASK-033: Group Presence — design spec'd in `docs/group-presence.md` (F.1); implementation Month 3-4
+- [ ] TASK-034: iOS Widget — spec'd in `docs/widget-spec.md` (F.2); implementation Month 3
+- [ ] TASK-035: Android strategy — tradeoff doc in `docs/android-strategy.md` (F.4); decision: native Kotlin + Material You at 50k MAU
 
 ---
 
