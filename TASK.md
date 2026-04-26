@@ -53,14 +53,15 @@
 - [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
 ### [TASK-003] Auth Flow
-- [ ] Supabase phone auth integration (Sprint 1 — swaps the `AuthService` stub)
+- [x] Supabase phone auth integration — `AuthService` now backed by `supabase-swift`
 - [x] OTP verification screen (glass design)
 - [x] Username + bio setup screen
 - [x] Luma onboarding animation trigger
 - [x] Seven-step onboarding: Welcome → Phone → OTP → Username → Bio → Privacy → Ready
 - [x] `GlassTextField` glass-styled input
 - [x] `OnboardingCoordinator` with async auth calls + error surfacing
-- [x] `AppCoordinator` routes to onboarding on first launch, persists completion in UserDefaults
+- [x] `AppCoordinator` boots via `AuthService.restoreSession()`, routes to onboarding on no session
+- [x] Keychain-backed session storage (`SupabaseSessionStorage` + `KeychainStore`)
 
 ---
 
@@ -69,6 +70,7 @@
 ### Sprint 1 — Core Loop
 - [ ] TASK-004: MapView with MapKit + Liquid Glass overlays (partial — real `Map{}` + annotations done; Liquid Glass on controls inherits from system)
 - [x] TASK-005: LocationService (CoreLocation wrapper) — `Services/LocationService.swift`
+- [x] TASK-005a: BackendClient (URLSession actor with retries + typed errors) — `Data/BackendClient.swift`
 - [ ] TASK-006: PresenceService (toggle on/off, 3h expiry)
 - [ ] TASK-007: Supabase PostGIS integration (store/query presences)
 - [ ] TASK-008: WebSocket service (real-time dot updates on map)

@@ -91,7 +91,7 @@ struct OnboardingPrivacyView: View {
 #Preview {
     ZStack {
         PresenceBackground()
-        OnboardingPrivacyView(coordinator: OnboardingCoordinator(onComplete: { _ in }))
+        OnboardingPrivacyView(coordinator: OnboardingCoordinator(auth: ServiceContainer.preview().auth, onComplete: { _ in }))
             .foregroundStyle(PresenceColors.presenceWhite)
     }
     .preferredColorScheme(.dark)

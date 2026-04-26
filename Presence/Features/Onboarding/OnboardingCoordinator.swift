@@ -33,7 +33,7 @@ final class OnboardingCoordinator {
     private let onComplete: (User) -> Void
     private var savedUser: User?
 
-    init(auth: AuthService = AuthService(), onComplete: @escaping (User) -> Void) {
+    init(auth: AuthService, onComplete: @escaping (User) -> Void) {
         self.auth = auth
         self.onComplete = onComplete
     }

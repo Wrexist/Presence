@@ -1,6 +1,7 @@
 //  PresenceApp
 //  PresenceApp.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — boot calls AuthService.restoreSession before routing.
 //  Purpose: App entry point. Wires ServiceContainer, AppCoordinator, and
 //           the root tab shell with modal presentation.
 
@@ -18,20 +19,26 @@ struct PresenceApp: App {
                 .environment(services)
                 .preferredColorScheme(.dark)
                 .tint(PresenceColors.auroraBlue)
+                .task {
+                    await coordinator.boot(auth: services.auth)
+                }
         }
     }
 }
 
 private struct RootView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(ServiceContainer.self) private var services
 
     var body: some View {
         @Bindable var bindable = coordinator
 
         ZStack {
             switch coordinator.route {
+            case .launching:
+                LaunchView()
             case .onboarding:
-                OnboardingView { user in
+                OnboardingView(auth: services.auth) { user in
                     coordinator.completeOnboarding(with: user)
                 }
             case .main:
@@ -54,6 +61,15 @@ private struct RootView: View {
             WaveReceivedView(wave: wave)
                 .presentationDetents([.large])
                 .presentationBackground(.clear)
+        }
+    }
+}
+
+private struct LaunchView: View {
+    var body: some View {
+        ZStack {
+            PresenceBackground()
+            LumaView(state: .idle, size: 96)
         }
     }
 }

@@ -1,6 +1,7 @@
 //  PresenceApp
 //  AppCoordinator.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — added .launching state for async session restore.
 //  Purpose: Root navigation state. Owns the top-level route, the current
 //           tab, any presented modal, and the persisted current user.
 //           Views read/write via @Environment.
@@ -11,6 +12,7 @@ import SwiftUI
 @Observable
 final class AppCoordinator {
     enum Route: Equatable {
+        case launching
         case onboarding
         case main
     }
@@ -27,28 +29,34 @@ final class AppCoordinator {
         }
     }
 
-    private static let onboardingCompleteKey = "presence.onboarding.complete.v1"
-
-    var route: Route
+    var route: Route = .launching
     var tab: AppTab = .map
     var modal: Modal?
     var currentUser: User?
 
-    init() {
-        let done = UserDefaults.standard.bool(forKey: Self.onboardingCompleteKey)
-        self.route = done ? .main : .onboarding
+    /// Called once on launch with the live AuthService. Resolves a session
+    /// from Keychain if one exists and routes accordingly. Falls back to
+    /// the onboarding flow on any failure.
+    func boot(auth: AuthService) async {
+        let restored = await auth.restoreSession()
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            if let user = restored {
+                self.currentUser = user
+                self.route = .main
+            } else {
+                self.route = .onboarding
+            }
+        }
     }
 
     func completeOnboarding(with user: User) {
         currentUser = user
-        UserDefaults.standard.set(true, forKey: Self.onboardingCompleteKey)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             route = .main
         }
     }
 
     func resetToOnboarding() {
-        UserDefaults.standard.removeObject(forKey: Self.onboardingCompleteKey)
         currentUser = nil
         route = .onboarding
     }
