@@ -44,9 +44,11 @@
 ## 🔨 IN PROGRESS
 
 ### Operational chores (browser/dashboard work — not code)
-- [ ] Create Supabase project, copy URL + anon key into local `.env.development`
-- [ ] Run the SQL migrations from `CLAUDE.md` § "Database Schema" in Supabase SQL editor
+- [ ] Create Supabase project — **walkthrough now in `docs/supabase-setup.md`**
+- [ ] Run `Backend/supabase/migrations/0001_initial_schema.sql` in Supabase SQL editor
 - [ ] Create RevenueCat account + iOS app, copy SDK key into `.env.development`
+- [ ] Provision Railway project for backend — **decision + steps in `docs/backend-hosting.md`**
+- [ ] Add `RAILWAY_TOKEN` repo secret + `BACKEND_URL` repo variable for `.github/workflows/backend-deploy.yml`
 - [ ] Push branch and confirm `pr-checks.yml` goes green on macOS runner
 - [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
