@@ -76,7 +76,7 @@
 - [x] TASK-008: WebSocket service (real-time dot updates on map) — backend geohash rooms + JWT handshake auth (B5); iOS `SocketService` + `MapViewModel` merging REST hydrate with socket events (B6)
 - [x] TASK-009: PresenceDotView (glowing marker on map)
 - [x] TASK-010: "Go Present" button (main CTA, glass pill) — wired to `PresenceService.activate/deactivate` + 3h countdown chip
-- [ ] TASK-011: Luma component + idle animation (Lottie — currently pure SwiftUI)
+- [x] TASK-011: Luma component + idle animation — `LumaView` is now Lottie-first with pure-SwiftUI fallback (`LumaPureView`); designer assets land under `Presence/Resources/Luma/` per the README spec
 
 ### Sprint 2 — Wave System
 - [ ] TASK-012: Tap-a-dot → wave preview sheet

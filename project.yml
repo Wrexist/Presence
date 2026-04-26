@@ -34,6 +34,7 @@ targets:
         excludes:
           - "**/.DS_Store"
           - "Resources/Info.plist"
+          - "Resources/**/README.md"
       - path: Shared
     info:
       path: Presence/Resources/Info.plist
