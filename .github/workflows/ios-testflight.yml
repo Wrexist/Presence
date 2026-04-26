@@ -233,7 +233,7 @@ jobs:
           python3 -m pip install --quiet --disable-pip-version-check cryptography >/dev/null 2>&1 || true
           python3 - <<'PY'
           # Verifies what the public App Store Connect API can see:
-          #   - bundle ID com.presenceapp.ios is registered
+          #   - bundle ID app.presence.ios is registered
           #   - it has the Push Notifications capability (required by the
           #     Presence.entitlements aps-environment key)
 
@@ -284,7 +284,7 @@ jobs:
                       yield d
                   url = body.get("links", {}).get("next")
 
-          REQUIRED_BUNDLE = "com.presenceapp.ios"
+          REQUIRED_BUNDLE = "app.presence.ios"
           WANT_CAPS = {"PUSH_NOTIFICATIONS"}
 
           bundle_map = {
@@ -399,7 +399,7 @@ jobs:
               echo "=================================================================="
               echo "Go to https://developer.apple.com/account/resources/identifiers/list"
               echo ""
-              echo "1. Click the App ID 'com.presenceapp.ios' → tick 'Push Notifications' → Save."
+              echo "1. Click the App ID 'app.presence.ios' → tick 'Push Notifications' → Save."
               echo "2. Re-run this workflow. The profile above should now show"
               echo "   'aps-environment' in its entitlements."
             fi
