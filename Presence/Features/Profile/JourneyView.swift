@@ -112,7 +112,9 @@ struct JourneyView: View {
                 HStack {
                     Text("Presence activity").font(Typography.headline)
                     Spacer()
-                    GlassChip(text: "last 7 days")
+                    Text("last 7 days")
+                        .font(Typography.footnote)
+                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
                 }
 
                 let activity = journey?.activity ?? []

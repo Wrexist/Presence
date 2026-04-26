@@ -18,7 +18,7 @@ struct HomeView: View {
     @State private var viewModel: MapViewModel?
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomLeading) {
             map
                 .ignoresSafeArea()
 
@@ -30,6 +30,10 @@ struct HomeView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 24)
+
+            ambientLuma
+                .padding(.leading, 16)
+                .padding(.bottom, 130)
         }
         .task {
             if viewModel == nil {
@@ -40,6 +44,7 @@ struct HomeView: View {
                 )
             }
             await viewModel?.start()
+            services.luma.recomputeNow()
         }
         .onDisappear {
             // Tab switch shouldn't tear down the socket — only an explicit
@@ -52,6 +57,17 @@ struct HomeView: View {
             guard newValue != nil else { return }
             Task { await viewModel?.hydrate() }
         }
+        .onChange(of: viewModel?.presences.count ?? 0) { _, _ in
+            services.luma.recomputeNow()
+        }
+        .onChange(of: services.presence.isActive) { _, _ in
+            services.luma.recomputeNow()
+        }
+    }
+
+    private var ambientLuma: some View {
+        LumaView(state: services.luma.ambient, size: 56)
+            .opacity(0.95)
     }
 
     // MARK: - Map
@@ -75,7 +91,11 @@ struct HomeView: View {
                             PresenceDotView(color: PresenceColors.dotColor(for: user.id.uuidString))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Wave at \(user.username)")
+                        .accessibilityLabel(
+                            user.bio.map { "Glowing user, \(user.username), \($0)" }
+                                ?? "Glowing user, \(user.username)"
+                        )
+                        .accessibilityHint("Double tap to start a wave")
                     }
                     .annotationTitles(.hidden)
                 }
@@ -131,14 +151,24 @@ struct HomeView: View {
 
     @ViewBuilder
     private var liveChip: some View {
-        switch services.socket.state {
-        case .connected:
-            GlassChip(text: "Live", systemImage: "dot.radiowaves.left.and.right")
-        case .connecting, .reconnecting:
-            GlassChip(text: "...", systemImage: "ellipsis")
-        case .disconnected:
-            GlassChip(text: "Offline", systemImage: "wifi.slash")
+        // No glass — this lives inside a GlassCard (the header) so we'd
+        // be stacking glass surfaces. Plain dot + label instead.
+        let (text, color, systemImage): (String, Color, String) = {
+            switch services.socket.state {
+            case .connected:
+                return ("Live", PresenceColors.auroraGreen, "dot.radiowaves.left.and.right")
+            case .connecting, .reconnecting:
+                return ("...", PresenceColors.presenceWhite.opacity(0.6), "ellipsis")
+            case .disconnected:
+                return ("Offline", PresenceColors.presenceWhite.opacity(0.5), "wifi.slash")
+            }
+        }()
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .semibold))
+            Text(text).font(Typography.footnote)
         }
+        .foregroundStyle(color)
     }
 
     // MARK: - CTA

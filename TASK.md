@@ -95,7 +95,7 @@
 - [x] TASK-023: Block/report flow — `/api/blocks` + `/api/reports` + `SafetySheet` reachable from compose / received / chat in ≤2 taps (D6)
 - [x] TASK-024: Privacy screen + data export — `PrivacyView` with blocked-user list + JSON share-sheet export of `/api/users/me/export` (D5)
 - [x] TASK-025: Settings screen — `SettingsView` with subscription status, sign-out + delete-account confirms (D5)
-- [ ] TASK-026: Luma full state machine + all animations
+- [x] TASK-026: Luma full state machine — `LumaCoordinator` (D7) drives the ambient Luma corner on `HomeView`; explicit-state Lumas (onboarding, paywall, celebration, chat) stay inline
 
 ### Sprint 4 — Beta
 - [ ] TASK-027: App Store Connect setup

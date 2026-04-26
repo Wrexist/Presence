@@ -152,7 +152,9 @@ struct WaveComposeView: View {
                         .textCase(.uppercase)
                     Spacer()
                     if icebreakerSource == .fallback {
-                        GlassChip(text: "local")
+                        Text("local")
+                            .font(Typography.footnote)
+                            .foregroundStyle(PresenceColors.auroraAmber.opacity(0.7))
                     }
                 }
                 .foregroundStyle(PresenceColors.auroraAmber)

@@ -12,6 +12,7 @@ struct LumaPureView: View {
     var size: CGFloat = 120
     var isAnimating: Bool = true
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var float: CGFloat = 0
     @State private var breathe: CGFloat = 1.0
     @State private var haloPulse: CGFloat = 1.0
@@ -25,7 +26,7 @@ struct LumaPureView: View {
         .frame(width: size * 1.6, height: size * 1.6)
         .offset(y: float)
         .scaleEffect(breathe)
-        .onAppear { if isAnimating { startAnimating() } }
+        .onAppear { if isAnimating && !reduceMotion { startAnimating() } }
         .accessibilityHidden(true)
     }
 

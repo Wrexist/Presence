@@ -35,10 +35,12 @@ struct PresenceApp: App {
                         case .main:
                             await services.socket.connect()
                             await services.wavesViewModel.start()
+                            services.luma.start()
                             if let userId = coordinator.currentUser?.id {
                                 await services.subscription.identify(userId: userId)
                             }
                         case .onboarding:
+                            services.luma.stop()
                             await services.subscription.signOut()
                             services.wavesViewModel.stop()
                             services.socket.disconnect()

@@ -21,6 +21,7 @@ final class ServiceContainer {
     let subscription: SubscriptionService
     let wavesViewModel: WavesViewModel
     let profileViewModel: ProfileViewModel
+    let luma: LumaCoordinator
 
     init(
         supabase: SupabaseClient,
@@ -32,7 +33,8 @@ final class ServiceContainer {
         notifications: NotificationService,
         subscription: SubscriptionService,
         wavesViewModel: WavesViewModel,
-        profileViewModel: ProfileViewModel
+        profileViewModel: ProfileViewModel,
+        luma: LumaCoordinator
     ) {
         self.supabase = supabase
         self.auth = auth
@@ -44,6 +46,7 @@ final class ServiceContainer {
         self.subscription = subscription
         self.wavesViewModel = wavesViewModel
         self.profileViewModel = profileViewModel
+        self.luma = luma
     }
 
     static func live() -> ServiceContainer {
@@ -57,6 +60,7 @@ final class ServiceContainer {
         let subscription = SubscriptionService(backend: backend)
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         let profileViewModel = ProfileViewModel(backend: backend)
+        let luma = LumaCoordinator(presence: presence, waves: wavesViewModel)
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -67,7 +71,8 @@ final class ServiceContainer {
             notifications: notifications,
             subscription: subscription,
             wavesViewModel: wavesViewModel,
-            profileViewModel: profileViewModel
+            profileViewModel: profileViewModel,
+            luma: luma
         )
     }
 
@@ -82,6 +87,7 @@ final class ServiceContainer {
         let subscription = SubscriptionService(backend: backend)
         let wavesViewModel = WavesViewModel(backend: backend, socket: socket)
         let profileViewModel = ProfileViewModel(backend: backend)
+        let luma = LumaCoordinator(presence: presence, waves: wavesViewModel)
         return ServiceContainer(
             supabase: client,
             auth: auth,
@@ -92,7 +98,8 @@ final class ServiceContainer {
             notifications: notifications,
             subscription: subscription,
             wavesViewModel: wavesViewModel,
-            profileViewModel: profileViewModel
+            profileViewModel: profileViewModel,
+            luma: luma
         )
     }
 }
