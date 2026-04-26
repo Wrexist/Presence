@@ -9,10 +9,9 @@
 
 1. Apple Developer Program membership ($99/yr)
 2. App Store Connect access for this Apple ID
-3. A Mac **once**, to export the distribution certificate (or ask someone with a Mac)
-4. An App Record in App Store Connect for bundle ID `app.presence.ios`
+3. An App Record in App Store Connect for bundle ID `app.presence.ios`
 
-Everything else runs from GitHub Actions — no Mac required for subsequent builds.
+Everything runs from Windows + GitHub Actions — **no Mac needed at any point**.
 
 ---
 
@@ -52,10 +51,13 @@ This produces the `.p12` distribution certificate that Apple's signing tools nee
 
 ### 3a. Generate a private key + CSR
 
+> **Git Bash users:** the `-subj` value starts with `/`, which Git Bash's MSYS path-conversion will mangle into `C:/Program Files/Git/emailAddress=...` and openssl will reject it. Prefix the second command with `MSYS_NO_PATHCONV=1` (shown below) — this disables the conversion for that invocation only. WSL, PowerShell, Linux, and macOS don't need this.
+
 ```bash
 # Replace YOUR_APPLE_ID_EMAIL with the email tied to your Apple Developer account.
 openssl genrsa -out PresenceDistribution.key 2048
-openssl req -new \
+
+MSYS_NO_PATHCONV=1 openssl req -new \
   -key PresenceDistribution.key \
   -out PresenceDistribution.csr \
   -subj "/emailAddress=YOUR_APPLE_ID_EMAIL/CN=Presence Distribution/C=US"
@@ -137,11 +139,13 @@ In [App Store Connect → Users and Access → Integrations → App Store Connec
 5. Download the `AuthKey_XXXXXXXXXX.p8` **immediately** — Apple only lets you download it once
 6. Note the **Key ID** (10 chars, visible in the table) → `APPLE_CONNECT_KEY_ID`
 7. Note the **Issuer ID** (UUID at the top of the page) → `APPLE_CONNECT_ISSUER_ID`
-8. Get the key contents for the secret:
-   ```bash
-   cat AuthKey_XXXXXXXXXX.p8 | pbcopy
-   ```
-   Paste the full multi-line PEM (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines) into `APPLE_CONNECT_PRIVATE_KEY`. GitHub preserves newlines.
+8. Copy the key contents to your clipboard:
+
+   **Git Bash on Windows:** `cat AuthKey_XXXXXXXXXX.p8 | clip`
+   **PowerShell:** `Get-Content AuthKey_XXXXXXXXXX.p8 -Raw | Set-Clipboard`
+   **macOS:** `cat AuthKey_XXXXXXXXXX.p8 | pbcopy`
+
+   Paste the full multi-line PEM (including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines) into `APPLE_CONNECT_PRIVATE_KEY`. GitHub preserves newlines.
 
 ---
 
