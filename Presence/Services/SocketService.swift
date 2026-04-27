@@ -54,9 +54,12 @@ final class SocketService {
         self.auth = auth
     }
 
-    deinit {
-        for c in continuations.values { c.finish() }
-    }
+    // No explicit deinit cleanup. Each AsyncStream's `onTermination` fires
+    // when its consuming Task is cancelled (which happens when the view
+    // owning the iteration is deallocated), and that callback removes the
+    // continuation from `continuations`. Touching MainActor-isolated state
+    // from a nonisolated deinit is a Swift 6 strict-concurrency error,
+    // and we don't actually need to here.
 
     /// Returns a fresh AsyncStream that receives every subsequent event.
     /// The returned stream cleans up its continuation automatically when

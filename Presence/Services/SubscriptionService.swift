@@ -84,7 +84,9 @@ final class SubscriptionService {
     /// Sign-out hook — called from AppCoordinator.resetToOnboarding.
     func signOut() async {
         guard hasConfigured else { return }
-        try? await Purchases.shared.logOut()
+        // logOut returns a CustomerInfo we deliberately discard — sign-out
+        // doesn't care about the post-logout entitlement state.
+        _ = try? await Purchases.shared.logOut()
         state = .unknown
     }
 

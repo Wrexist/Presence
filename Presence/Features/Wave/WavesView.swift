@@ -149,20 +149,23 @@ struct WavesView: View {
         }
     }
 
-    @ViewBuilder
     private func statusChip(wave: Wave) -> some View {
-        let remaining = max(0, wave.expiresAt.timeIntervalSinceNow)
-        let mins = Int(remaining / 60)
-        let label: String
-        switch wave.status {
-        case .sent:        label = remaining > 0 ? "expires in \(mins)m" : "expired"
-        case .wavedBack:   label = "mutual"
-        case .expired:     label = "expired"
-        case .blocked:     label = "blocked"
-        }
-        Text(label)
+        Text(statusLabel(wave: wave))
             .font(Typography.footnote)
             .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+    }
+
+    /// Pure function — kept out of the @ViewBuilder context above because
+    /// imperative `let`/`switch` assignment isn't valid inside one.
+    private func statusLabel(wave: Wave) -> String {
+        let remaining = max(0, wave.expiresAt.timeIntervalSinceNow)
+        let mins = Int(remaining / 60)
+        switch wave.status {
+        case .sent:        return remaining > 0 ? "expires in \(mins)m" : "expired"
+        case .wavedBack:   return "mutual"
+        case .expired:     return "expired"
+        case .blocked:     return "blocked"
+        }
     }
 
     private func emptyCard(text: String, sub: String, state: LumaState) -> some View {
