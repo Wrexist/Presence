@@ -3,41 +3,51 @@
 //  Created: 2026-04-26
 //  Purpose: Central read of environment-supplied configuration. Reads first
 //           from process environment (set in the Xcode scheme during dev),
-//           then from Info.plist (baked in at archive via xcconfig). Crashes
-//           loudly on missing required values — better at launch than at
-//           the first auth call.
+//           then from Info.plist (baked in at archive via xcconfig).
+//
+//  Why we don't fatalError on missing values:
+//  An earlier draft of this file crashed at launch when SUPABASE_URL was
+//  missing. That broke `xcodebuild test` in CI (no env vars) and any
+//  developer running the app fresh from a clone. Network calls will fail
+//  loudly the first time someone tries to use them — that's a clearer
+//  signal than a crash on the splash screen, and it lets the app boot
+//  far enough for tests to run.
 
 import Foundation
 
 enum Config {
+    /// Stable placeholders so URL(string:) succeeds and ServiceContainer
+    /// can construct without crashing. Any real network call will fail
+    /// against these hosts — the failure surfaces at the BackendClient /
+    /// SupabaseClient call site, not at launch.
+    private static let placeholderHTTPS = "https://unconfigured.local"
+    private static let placeholderKey = ""
+
     static let supabaseURL: URL = {
-        guard let url = URL(string: required("SUPABASE_URL")) else {
-            fatalError("SUPABASE_URL is not a valid URL")
-        }
-        return url
+        let raw = readValue(for: "SUPABASE_URL") ?? placeholderHTTPS
+        return URL(string: raw) ?? URL(string: placeholderHTTPS)!
     }()
 
-    static let supabaseAnonKey: String = required("SUPABASE_ANON_KEY")
+    static let supabaseAnonKey: String =
+        readValue(for: "SUPABASE_ANON_KEY") ?? placeholderKey
 
     static let backendURL: URL = {
-        guard let url = URL(string: required("BACKEND_URL")) else {
-            fatalError("BACKEND_URL is not a valid URL")
-        }
-        return url
+        let raw = readValue(for: "BACKEND_URL") ?? placeholderHTTPS
+        return URL(string: raw) ?? URL(string: placeholderHTTPS)!
     }()
 
-    static let revenueCatAPIKey: String = optional("REVENUECAT_API_KEY") ?? ""
-    static let posthogAPIKey: String = optional("POSTHOG_API_KEY") ?? ""
-    static let posthogHost: String = optional("POSTHOG_HOST") ?? "https://us.i.posthog.com"
-    static let sentryDSN: String = optional("SENTRY_DSN") ?? ""
+    static let revenueCatAPIKey: String = readValue(for: "REVENUECAT_API_KEY") ?? ""
+    static let posthogAPIKey: String = readValue(for: "POSTHOG_API_KEY") ?? ""
+    static let posthogHost: String =
+        readValue(for: "POSTHOG_HOST") ?? "https://us.i.posthog.com"
+    static let sentryDSN: String = readValue(for: "SENTRY_DSN") ?? ""
 
-    private static func required(_ key: String) -> String {
-        if let v = readValue(for: key), !v.isEmpty { return v }
-        fatalError("Missing required configuration value: \(key). Set it via the Xcode scheme env vars (dev) or xcconfig → Info.plist (release).")
-    }
-
-    private static func optional(_ key: String) -> String? {
-        readValue(for: key).flatMap { $0.isEmpty ? nil : $0 }
+    /// True only when ALL required keys are present. Use this from a
+    /// future "is this build production-ready?" health check.
+    static var isFullyConfigured: Bool {
+        readValue(for: "SUPABASE_URL")?.isEmpty == false
+            && readValue(for: "SUPABASE_ANON_KEY")?.isEmpty == false
+            && readValue(for: "BACKEND_URL")?.isEmpty == false
     }
 
     private static func readValue(for key: String) -> String? {
