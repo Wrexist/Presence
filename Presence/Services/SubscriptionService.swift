@@ -136,7 +136,12 @@ final class SubscriptionService {
 
     private func startObserving() {
         infoTask?.cancel()
-        infoTask = Task { [weak self] in
+        // Hop to a detached Task explicitly so the main actor stays free,
+        // then bounce each customerInfo back onto MainActor for state
+        // updates. The detach matters under Swift 6 strict concurrency:
+        // CustomerInfo isn't Sendable, but @preconcurrency import RevenueCat
+        // downgrades the warning, and applyCustomerInfo runs on MainActor.
+        infoTask = Task.detached { [weak self] in
             for await info in Purchases.shared.customerInfoStream {
                 if Task.isCancelled { break }
                 await self?.applyCustomerInfo(info)
