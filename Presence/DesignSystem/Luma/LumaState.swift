@@ -1,8 +1,11 @@
 //  PresenceApp
 //  LumaState.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — adds Lottie animation-name + speed mappings.
 //  Purpose: The mascot's emotional states. Each state maps to a body color,
-//           a glow color, an expression, and an animation tempo.
+//           a glow color, an expression, an animation tempo, and a Lottie
+//           animation file name (consumed by LumaView when assets are
+//           bundled; otherwise the pure-SwiftUI fallback is used).
 
 import SwiftUI
 
@@ -51,5 +54,34 @@ enum LumaState: String, CaseIterable, Sendable {
 
     var eyesClosed: Bool {
         self == .sleepy || self == .gentle
+    }
+
+    /// Lottie animation file name (without extension). LumaView looks this
+    /// up in the main bundle via `LottieAnimation.named(_:)`. If the file
+    /// isn't bundled, the pure-SwiftUI fallback renders instead — see
+    /// `Presence/Resources/Luma/README.md` for the full asset spec.
+    var animationName: String {
+        switch self {
+        case .idle:        return "luma_idle"
+        case .excited:     return "luma_excited"
+        case .waving:      return "luma_waving"
+        case .connecting:  return "luma_connecting"
+        case .celebrating: return "luma_celebrating"
+        case .sleepy:      return "luma_sleepy"
+        case .gentle:      return "luma_gentle"
+        }
+    }
+
+    /// Lottie playback speed multiplier. Mirrors the floatDuration tempo so
+    /// the visual cadence stays consistent whether we render Lottie or the
+    /// pure-SwiftUI fallback.
+    var lottieSpeed: CGFloat {
+        switch self {
+        case .idle, .gentle:       return 1.0
+        case .sleepy:              return 0.7
+        case .excited, .waving:    return 1.4
+        case .connecting:          return 1.1
+        case .celebrating:         return 1.6
+        }
     }
 }

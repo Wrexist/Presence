@@ -66,7 +66,7 @@ struct OnboardingUsernameView: View {
 #Preview {
     ZStack {
         PresenceBackground()
-        OnboardingUsernameView(coordinator: OnboardingCoordinator(onComplete: { _ in }))
+        OnboardingUsernameView(coordinator: OnboardingCoordinator(auth: ServiceContainer.preview().auth, onComplete: { _ in }))
             .foregroundStyle(PresenceColors.presenceWhite)
     }
     .preferredColorScheme(.dark)

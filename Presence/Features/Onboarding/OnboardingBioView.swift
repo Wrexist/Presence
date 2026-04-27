@@ -72,7 +72,7 @@ struct OnboardingBioView: View {
 #Preview {
     ZStack {
         PresenceBackground()
-        OnboardingBioView(coordinator: OnboardingCoordinator(onComplete: { _ in }))
+        OnboardingBioView(coordinator: OnboardingCoordinator(auth: ServiceContainer.preview().auth, onComplete: { _ in }))
             .foregroundStyle(PresenceColors.presenceWhite)
     }
     .preferredColorScheme(.dark)

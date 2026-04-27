@@ -73,7 +73,7 @@ struct OnboardingOTPView: View {
 #Preview {
     ZStack {
         PresenceBackground()
-        OnboardingOTPView(coordinator: OnboardingCoordinator(onComplete: { _ in }))
+        OnboardingOTPView(coordinator: OnboardingCoordinator(auth: ServiceContainer.preview().auth, onComplete: { _ in }))
             .foregroundStyle(PresenceColors.presenceWhite)
     }
     .preferredColorScheme(.dark)

@@ -1,15 +1,24 @@
 //  PresenceApp
 //  WaveReceivedView.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — driven by the live Wave model + WavesViewModel.
 //  Purpose: "Someone waved at you" — profile, bio, AI icebreaker, and the
-//           mutual-wave CTA. Matches the third panel of Design_2.
+//           mutual-wave CTA. Accept calls POST /api/waves/:id/respond,
+//           dismisses, and routes into the celebration → chat flow.
 
 import SwiftUI
 
 struct WaveReceivedView: View {
-    let wave: IncomingWave
+    let wave: Wave
+    let viewModel: WavesViewModel
+
     @Environment(AppCoordinator.self) private var coordinator
-    @State private var sentBack = false
+    @State private var isResponding = false
+    @State private var didAccept = false
+
+    private var other: Wave.Other {
+        wave.other ?? Wave.Other(id: wave.senderId, username: "Someone", bio: nil)
+    }
 
     var body: some View {
         ZStack {
@@ -27,11 +36,13 @@ struct WaveReceivedView: View {
                 avatar
 
                 VStack(spacing: 4) {
-                    Text("\(wave.username), \(wave.age)")
+                    Text(other.username)
                         .font(Typography.title)
-                    Text(wave.venueName)
-                        .font(Typography.caption)
-                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+                    if let bio = other.bio, !bio.isEmpty {
+                        Text(bio)
+                            .font(Typography.caption)
+                            .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+                    }
                 }
 
                 icebreakerCard
@@ -54,7 +65,20 @@ struct WaveReceivedView: View {
                 coordinator.dismissModal()
             }
             Spacer()
-            GlassIconButton(systemImage: "flag", accessibilityLabel: "Report or block") {}
+            GlassIconButton(systemImage: "flag", accessibilityLabel: "Block or report") {
+                coordinator.dismissModal()
+                let other = self.other
+                let waveId = wave.id
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    coordinator.present(.safety(.init(
+                        userId: other.id,
+                        username: other.username,
+                        context: .wave,
+                        referenceId: waveId
+                    )))
+                }
+            }
         }
         .padding(.top, 8)
     }
@@ -89,18 +113,12 @@ struct WaveReceivedView: View {
                         )
                     )
                     .frame(width: 120, height: 120)
-
-                // Stylized initial since we don't ship photos in MVP.
-                Text(wave.username.prefix(1).uppercased())
+                Text(other.username.prefix(1).uppercased())
                     .font(.system(size: 44, weight: .semibold, design: .rounded))
                     .foregroundStyle(PresenceColors.deepNight.opacity(0.75))
             }
-            .overlay(
-                Circle()
-                    .stroke(Color.white.opacity(0.5), lineWidth: 2)
-            )
+            .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 2))
 
-            // Tiny Luma floating at the edge of the avatar halo.
             LumaView(state: .waving, size: 44)
                 .offset(x: 80, y: -70)
         }
@@ -123,9 +141,11 @@ struct WaveReceivedView: View {
                     .font(Typography.body)
                     .foregroundStyle(PresenceColors.presenceWhite)
 
-                Text("— \(wave.bio)")
-                    .font(Typography.caption)
-                    .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+                if let bio = other.bio, !bio.isEmpty {
+                    Text("— \(bio)")
+                        .font(Typography.caption)
+                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+                }
             }
         }
     }
@@ -133,47 +153,50 @@ struct WaveReceivedView: View {
     private var ctaStack: some View {
         VStack(spacing: 10) {
             GlassPillButton(
-                title: sentBack ? "Wave sent — opening chat" : "Send a wave back",
-                systemImage: sentBack ? "checkmark" : "hand.wave.fill"
+                title: ctaTitle,
+                systemImage: didAccept ? "checkmark" : "hand.wave.fill"
             ) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    sentBack = true
-                }
+                Task { await accept() }
             }
             .shadow(color: PresenceColors.auroraPink.opacity(0.5), radius: 22, y: 6)
+            .disabled(isResponding || didAccept)
 
             Button("Not right now") {
-                coordinator.dismissModal()
+                Task {
+                    await viewModel.decline(wave)
+                    coordinator.dismissModal()
+                }
             }
             .font(Typography.callout)
             .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
             .buttonStyle(.plain)
+            .disabled(isResponding)
         }
     }
-}
 
-// MARK: - Preview-grade model
+    private var ctaTitle: String {
+        if didAccept { return "Wave sent — opening chat" }
+        if isResponding { return "Sending..." }
+        return "Send a wave back"
+    }
 
-struct IncomingWave: Identifiable, Hashable {
-    let id: UUID
-    let username: String
-    let age: Int
-    let bio: String
-    let venueName: String
-    let icebreaker: String
+    // MARK: - Actions
 
-    static let sample = IncomingWave(
-        id: UUID(),
-        username: "Maya",
-        age: 24,
-        bio: "morning coffee runs",
-        venueName: "Bluestone Coffee · 4 min walk",
-        icebreaker: "We've both been chasing the same oat-milk flat white all week — is their afternoon special any good?"
-    )
-}
+    private func accept() async {
+        guard !isResponding, !didAccept else { return }
+        isResponding = true
+        defer { isResponding = false }
 
-#Preview {
-    WaveReceivedView(wave: .sample)
-        .environment(AppCoordinator())
-        .preferredColorScheme(.dark)
+        let response = await viewModel.accept(wave)
+        guard response?.mutual == true else { return }
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            didAccept = true
+        }
+        // Brief beat so the user sees the checkmark, then hand off to the
+        // celebration. WavesViewModel.pendingMutual is set; the modal swap
+        // happens in the parent view's onChange.
+        try? await Task.sleep(nanoseconds: 700_000_000)
+        coordinator.dismissModal()
+    }
 }

@@ -1,11 +1,11 @@
 //  PresenceApp
 //  HomeView.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — wired to MapViewModel (live REST hydrate + socket merge).
 //  Purpose: The "who's nearby" tab. Real SwiftUI MapKit map underneath,
-//           glowing presence dots + floating Lumas as annotations, and the
-//           Go Present CTA anchored at the bottom. Camera defaults to San
-//           Francisco when no location fix is available; shows the user's
-//           own dot when CoreLocation has a current fix.
+//           glowing presence dots from the live nearby query, the user's
+//           own dot when CoreLocation has a fix, and the Go Present CTA
+//           anchored at the bottom.
 
 import MapKit
 import SwiftUI
@@ -15,26 +15,10 @@ struct HomeView: View {
     @Environment(ServiceContainer.self) private var services
 
     @State private var cameraPosition: MapCameraPosition = .region(Self.defaultRegion)
-
-    // Preview data — stays static until Sprint 1 wires the backend.
-    private let venueName = "San Francisco"
-    private let nearbyCount = 8
-    private let previewDots: [PreviewDot] = [
-        .init(lat: 37.7755, lng: -122.4220, color: PresenceColors.auroraPink),
-        .init(lat: 37.7788, lng: -122.4200, color: PresenceColors.auroraViolet),
-        .init(lat: 37.7730, lng: -122.4150, color: PresenceColors.auroraBlue),
-        .init(lat: 37.7770, lng: -122.4165, color: PresenceColors.auroraAmber),
-        .init(lat: 37.7760, lng: -122.4245, color: PresenceColors.auroraViolet),
-        .init(lat: 37.7712, lng: -122.4210, color: PresenceColors.auroraPink),
-        .init(lat: 37.7742, lng: -122.4125, color: PresenceColors.auroraBlue)
-    ]
-    private let lumaAnnotations: [LumaAnnotation] = [
-        .init(lat: 37.7773, lng: -122.4185, state: .idle, size: 44),
-        .init(lat: 37.7742, lng: -122.4188, state: .excited, size: 40)
-    ]
+    @State private var viewModel: MapViewModel?
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomLeading) {
             map
                 .ignoresSafeArea()
 
@@ -46,7 +30,44 @@ struct HomeView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 24)
+
+            ambientLuma
+                .padding(.leading, 16)
+                .padding(.bottom, 130)
         }
+        .task {
+            if viewModel == nil {
+                viewModel = MapViewModel(
+                    backend: services.backend,
+                    socket: services.socket,
+                    location: services.location
+                )
+            }
+            await viewModel?.start()
+            services.luma.recomputeNow()
+        }
+        .onDisappear {
+            // Tab switch shouldn't tear down the socket — only an explicit
+            // sign-out should. Keep the connection live.
+        }
+        .onChange(of: services.location.currentLocation) { _, newValue in
+            // First fix arrives after the user grants permission and starts
+            // glowing — re-hydrate so the dots populate without waiting for
+            // a socket event.
+            guard newValue != nil else { return }
+            Task { await viewModel?.hydrate() }
+        }
+        .onChange(of: viewModel?.presences.count ?? 0) { _, _ in
+            services.luma.recomputeNow()
+        }
+        .onChange(of: services.presence.isActive) { _, _ in
+            services.luma.recomputeNow()
+        }
+    }
+
+    private var ambientLuma: some View {
+        LumaView(state: services.luma.ambient, size: 56)
+            .opacity(0.95)
     }
 
     // MARK: - Map
@@ -61,20 +82,23 @@ struct HomeView: View {
                 .annotationTitles(.hidden)
             }
 
-            // Nearby presences.
-            ForEach(previewDots) { dot in
-                Annotation("", coordinate: dot.coordinate) {
-                    PresenceDotView(color: dot.color)
+            if let viewModel {
+                ForEach(viewModel.visible) { user in
+                    Annotation("", coordinate: user.coordinate2D) {
+                        Button {
+                            coordinator.present(.waveCompose(user))
+                        } label: {
+                            PresenceDotView(color: PresenceColors.dotColor(for: user.id.uuidString))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            user.bio.map { "Glowing user, \(user.username), \($0)" }
+                                ?? "Glowing user, \(user.username)"
+                        )
+                        .accessibilityHint("Double tap to start a wave")
+                    }
+                    .annotationTitles(.hidden)
                 }
-                .annotationTitles(.hidden)
-            }
-
-            // Floating Lumas scattered on the map (Design_2 aesthetic).
-            ForEach(lumaAnnotations) { luma in
-                Annotation("", coordinate: luma.coordinate) {
-                    LumaView(state: luma.state, size: luma.size)
-                }
-                .annotationTitles(.hidden)
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
@@ -98,17 +122,53 @@ struct HomeView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(PresenceColors.auroraBlue)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(venueName)
+                    Text(headerTitle)
                         .font(Typography.headline)
                         .foregroundStyle(PresenceColors.presenceWhite)
-                    Text("\(nearbyCount) people glowing nearby")
+                    Text(headerSubtitle)
                         .font(Typography.caption)
                         .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
                 }
                 Spacer()
-                GlassChip(text: "Live", systemImage: "dot.radiowaves.left.and.right")
+                liveChip
             }
         }
+    }
+
+    private var headerTitle: String {
+        services.location.currentLocation == nil ? "Looking around" : "Nearby"
+    }
+
+    private var headerSubtitle: String {
+        guard let viewModel else { return "Setting up..." }
+        let count = viewModel.presences.count
+        if count == 0 {
+            return "No one glowing here right now"
+        }
+        let suffix = viewModel.overflowCount > 0 ? " (showing closest \(MapViewModel.visibleCap))" : ""
+        return "\(count) \(count == 1 ? "person" : "people") glowing nearby\(suffix)"
+    }
+
+    @ViewBuilder
+    private var liveChip: some View {
+        // No glass — this lives inside a GlassCard (the header) so we'd
+        // be stacking glass surfaces. Plain dot + label instead.
+        let (text, color, systemImage): (String, Color, String) = {
+            switch services.socket.state {
+            case .connected:
+                return ("Live", PresenceColors.auroraGreen, "dot.radiowaves.left.and.right")
+            case .connecting, .reconnecting:
+                return ("...", PresenceColors.presenceWhite.opacity(0.6), "ellipsis")
+            case .disconnected:
+                return ("Offline", PresenceColors.presenceWhite.opacity(0.5), "wifi.slash")
+            }
+        }()
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .semibold))
+            Text(text).font(Typography.footnote)
+        }
+        .foregroundStyle(color)
     }
 
     // MARK: - CTA
@@ -131,28 +191,9 @@ struct HomeView: View {
     )
 }
 
-// MARK: - Supporting annotation types
-
-private struct PreviewDot: Identifiable {
-    let id = UUID()
-    let lat: Double
-    let lng: Double
-    let color: Color
-
-    var coordinate: CLLocationCoordinate2D {
-        .init(latitude: lat, longitude: lng)
-    }
-}
-
-private struct LumaAnnotation: Identifiable {
-    let id = UUID()
-    let lat: Double
-    let lng: Double
-    let state: LumaState
-    let size: CGFloat
-
-    var coordinate: CLLocationCoordinate2D {
-        .init(latitude: lat, longitude: lng)
+private extension PresentUser {
+    var coordinate2D: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
 }
 

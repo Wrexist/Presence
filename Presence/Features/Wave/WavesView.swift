@@ -1,83 +1,106 @@
 //  PresenceApp
 //  WavesView.swift
 //  Created: 2026-04-24
-//  Purpose: The Waves tab. Two sections: incoming waves (people who
-//           waved at you) and sent waves awaiting response. Tap a row to
-//           open WaveReceivedView.
+//  Updated: 2026-04-26 — driven by WavesViewModel (REST hydrate + socket
+//                        merge), routes accept → celebration → chat.
+//  Purpose: The Waves tab. Two sections: incoming (people who waved at
+//           you) and outgoing (waves awaiting response). Tap an incoming
+//           row → WaveReceivedView. A mutual wave triggers the
+//           celebration modal automatically via `viewModel.pendingMutual`.
 
 import SwiftUI
 
 struct WavesView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(ServiceContainer.self) private var services
 
-    private let incoming: [IncomingWave] = [
-        .sample,
-        .init(
-            id: UUID(),
-            username: "Theo",
-            age: 31,
-            bio: "runs at golden hour",
-            venueName: "Riverside Park · 9 min walk",
-            icebreaker: "Prime golden-hour park light right now — do you run this route often?"
-        )
-    ]
+    private var viewModel: WavesViewModel { services.wavesViewModel }
 
     var body: some View {
         ZStack {
             PresenceBackground()
+            content(viewModel: viewModel)
+        }
+        .task {
+            await viewModel.start()
+        }
+    }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
+    // MARK: - Content
 
-                    section(title: "Waves for you", count: incoming.count) {
+    @ViewBuilder
+    private func content(viewModel: WavesViewModel) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header(viewModel: viewModel)
+
+                section(title: "Waves for you", count: viewModel.incoming.count) {
+                    if viewModel.incoming.isEmpty {
+                        emptyCard(
+                            text: "No waves yet",
+                            sub: "Be the first to glow nearby.",
+                            state: .sleepy
+                        )
+                    } else {
                         VStack(spacing: 12) {
-                            ForEach(incoming) { wave in
+                            ForEach(viewModel.incoming) { wave in
                                 Button {
-                                    coordinator.present(.wave(wave))
+                                    coordinator.present(.waveReceived(wave))
                                 } label: {
                                     waveRow(wave)
                                 }
                                 .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    section(title: "You waved at", count: 0) {
-                        GlassCard(cornerRadius: 22) {
-                            HStack(spacing: 14) {
-                                LumaView(state: .gentle, size: 52)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("No outgoing waves yet")
-                                        .font(Typography.headline)
-                                    Text("Tap a glowing dot on the map to start a wave.")
-                                        .font(Typography.caption)
-                                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
-                                }
-                                Spacer()
+                                .accessibilityLabel("Wave from \(wave.other?.username ?? "someone")")
                             }
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 120)
-                .foregroundStyle(PresenceColors.presenceWhite)
+
+                section(title: "You waved at", count: viewModel.outgoing.count) {
+                    if viewModel.outgoing.isEmpty {
+                        emptyCard(
+                            text: "No outgoing waves yet",
+                            sub: "Tap a glowing dot on the map to start a wave.",
+                            state: .gentle
+                        )
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(viewModel.outgoing) { wave in
+                                waveRow(wave)
+                            }
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 120)
+            .foregroundStyle(PresenceColors.presenceWhite)
+        }
+        .refreshable {
+            await viewModel.refresh()
         }
     }
 
     // MARK: - Components
 
-    private var header: some View {
+    private func header(viewModel: WavesViewModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Waves")
                 .font(Typography.display)
-            Text("Moments waiting for you.")
+            Text(headerSubtitle(viewModel: viewModel))
                 .font(Typography.callout)
                 .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
         }
         .padding(.top, 8)
+    }
+
+    private func headerSubtitle(viewModel: WavesViewModel) -> String {
+        if viewModel.isLoading && viewModel.incoming.isEmpty && viewModel.outgoing.isEmpty {
+            return "Loading..."
+        }
+        let total = viewModel.incoming.count + viewModel.outgoing.count
+        return total == 0 ? "Moments waiting for you." : "Pull to refresh."
     }
 
     private func section<Content: View>(
@@ -87,39 +110,35 @@ struct WavesView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(title)
-                    .font(Typography.headline)
+                Text(title).font(Typography.headline)
                 Spacer()
-                if count > 0 {
-                    GlassChip(text: "\(count)")
-                }
+                if count > 0 { GlassChip(text: "\(count)") }
             }
             content()
         }
     }
 
-    private func waveRow(_ wave: IncomingWave) -> some View {
-        GlassCard(cornerRadius: 22) {
+    private func waveRow(_ wave: Wave) -> some View {
+        let other = wave.other?.username ?? "Someone"
+        return GlassCard(cornerRadius: 22) {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
                         .fill(PresenceColors.Luma.lavender.opacity(0.5))
                         .frame(width: 56, height: 56)
-                    Text(wave.username.prefix(1))
+                    Text(other.prefix(1))
                         .font(Typography.headline)
                         .foregroundStyle(PresenceColors.deepNight.opacity(0.8))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(wave.username), \(wave.age)")
+                    Text(other)
                         .font(Typography.headline)
                     Text(wave.icebreaker)
                         .font(Typography.caption)
                         .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
                         .lineLimit(2)
-                    Text(wave.venueName)
-                        .font(Typography.footnote)
-                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+                    statusChip(wave: wave)
                 }
 
                 Spacer()
@@ -129,10 +148,46 @@ struct WavesView: View {
             }
         }
     }
+
+    private func statusChip(wave: Wave) -> some View {
+        Text(statusLabel(wave: wave))
+            .font(Typography.footnote)
+            .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))
+    }
+
+    /// Pure function — kept out of the @ViewBuilder context above because
+    /// imperative `let`/`switch` assignment isn't valid inside one.
+    private func statusLabel(wave: Wave) -> String {
+        let remaining = max(0, wave.expiresAt.timeIntervalSinceNow)
+        let mins = Int(remaining / 60)
+        switch wave.status {
+        case .sent:        return remaining > 0 ? "expires in \(mins)m" : "expired"
+        case .wavedBack:   return "mutual"
+        case .expired:     return "expired"
+        case .blocked:     return "blocked"
+        }
+    }
+
+    private func emptyCard(text: String, sub: String, state: LumaState) -> some View {
+        GlassCard(cornerRadius: 22) {
+            HStack(spacing: 14) {
+                LumaView(state: state, size: 52)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(text).font(Typography.headline)
+                    Text(sub)
+                        .font(Typography.caption)
+                        .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
+                }
+                Spacer()
+            }
+        }
+    }
+
 }
 
 #Preview {
     WavesView()
         .environment(AppCoordinator())
+        .environment(ServiceContainer.preview())
         .preferredColorScheme(.dark)
 }

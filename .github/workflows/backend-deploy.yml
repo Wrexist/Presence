@@ -1,0 +1,83 @@
+name: Backend deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Backend/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: false
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to Railway
+    needs: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@latest
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach --service backend
+
+      - name: Smoke test /health
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "BACKEND_URL repo variable is not set; skipping smoke test."
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            sleep $((i * 4))
+            code=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BACKEND_URL/health" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Healthy on attempt $i:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $code"
+          done
+          echo "Smoke test failed after 5 attempts."
+          exit 1

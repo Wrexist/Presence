@@ -1,10 +1,12 @@
 //  PresenceApp
 //  GoPresentView.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — wired to PresenceService (activate / deactivate +
+//                        3h countdown chip).
 //  Purpose: "Ready to be present?" hero screen. Requests whenInUse location
 //           permission on tap (first time only — subsequent taps use the
-//           existing grant). If the user has denied, surfaces an alert
-//           pointing to Settings.
+//           existing grant). Activation persists via the backend, schedules
+//           a 3-hour expiry, and surfaces a live countdown.
 
 import CoreLocation
 import SwiftUI
@@ -12,9 +14,11 @@ import SwiftUI
 struct GoPresentView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(ServiceContainer.self) private var services
-    @State private var isActivating = false
     @State private var showDeniedAlert = false
     @State private var isRequesting = false
+    @State private var errorMessage: String?
+
+    private var isActivating: Bool { services.presence.isActive }
 
     var body: some View {
         ZStack {
@@ -40,6 +44,21 @@ struct GoPresentView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.secondary))
                     .padding(.horizontal, 24)
+
+                    if let expiresAt = services.presence.expiresAt, isActivating {
+                        ExpiryCountdownChip(expiresAt: expiresAt)
+                            .padding(.top, 4)
+                            .transition(.opacity.combined(with: .scale))
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(Typography.footnote)
+                            .foregroundStyle(PresenceColors.auroraPink)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 4)
+                    }
                 }
 
                 Spacer()
@@ -85,31 +104,45 @@ struct GoPresentView: View {
     }
 
     private func handleGoPresent() async {
-        // Defense in depth against rapid taps — the LocationService also
-        // queues overlapping continuations safely, but not spawning redundant
-        // Tasks in the first place is cleaner.
         guard !isRequesting else { return }
 
         if isActivating {
+            isRequesting = true
             services.location.stopUpdating()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
-                isActivating = false
-            }
+            await services.presence.deactivate()
+            await services.analytics.capture(.presenceDeactivated(reason: .manual))
+            isRequesting = false
             return
         }
 
         isRequesting = true
         defer { isRequesting = false }
+        errorMessage = nil
 
         let status = await services.location.requestWhenInUseAuthorization()
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             services.location.startUpdating()
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
-                isActivating = true
+            await waitForFirstFix()
+            do {
+                try await services.presence.activate()
+                await services.analytics.capture(.presenceActivated(durationMinutes: 180))
+            } catch let error as BackendError {
+                services.crashReporting.breadcrumb(error: error, location: "GoPresentView.handleGoPresent")
+                if case let .freeLimitReached(weeklyUsed, resetsAt) = error {
+                    await services.analytics.capture(.paywallShown(reason: .freeLimit))
+                    coordinator.dismissModal()
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    coordinator.present(.paywall(.freeLimit(
+                        weeklyUsed: weeklyUsed,
+                        resetsAt: resetsAt
+                    )))
+                    return
+                }
+                errorMessage = userFacing(error)
+            } catch {
+                errorMessage = "Couldn't start glowing. Try again?"
             }
-            // TODO(sprint-1): call PresenceService.activate() — persists via
-            // backend, schedules 3h expiry, broadcasts over WebSocket.
         case .denied, .restricted:
             showDeniedAlert = true
         case .notDetermined:
@@ -117,6 +150,25 @@ struct GoPresentView: View {
             break
         @unknown default:
             break
+        }
+    }
+
+    private func waitForFirstFix() async {
+        // Up to 3s for the first GPS fix; after that the user gets an
+        // error message and can retry. Avoids a silent hang on startup.
+        for _ in 0..<30 {
+            if services.location.currentLocation != nil { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
+    private func userFacing(_ error: BackendError) -> String {
+        switch error {
+        case .unauthorized: return "Sign in again to go present."
+        case .freeLimitReached: return "You've hit this week's free limit. Upgrade for unlimited."
+        case .invalidRequest: return "Couldn't read your location yet — try again in a moment."
+        case .network: return "Network hiccup. Try again?"
+        default: return "Couldn't start glowing. Try again?"
         }
     }
 
@@ -141,6 +193,30 @@ struct GoPresentView: View {
             Spacer()
         }
         .padding(.top, 8)
+    }
+}
+
+// MARK: - Countdown chip
+
+private struct ExpiryCountdownChip: View {
+    let expiresAt: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = max(0, expiresAt.timeIntervalSince(context.date))
+            GlassChip(text: "Glowing for " + format(remaining))
+        }
+    }
+
+    private func format(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded(.down))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%02d:%02d", m, s)
     }
 }
 

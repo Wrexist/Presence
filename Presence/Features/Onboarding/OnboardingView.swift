@@ -1,6 +1,7 @@
 //  PresenceApp
 //  OnboardingView.swift
 //  Created: 2026-04-24
+//  Updated: 2026-04-26 — coordinator now takes AuthService at init time.
 //  Purpose: Root onboarding container. Shared backdrop + progress chip,
 //           dispatches to the per-step view via the coordinator's state.
 
@@ -9,8 +10,10 @@ import SwiftUI
 struct OnboardingView: View {
     @State private var coordinator: OnboardingCoordinator
 
-    init(onComplete: @escaping (User) -> Void) {
-        self._coordinator = State(initialValue: OnboardingCoordinator(onComplete: onComplete))
+    init(auth: AuthService, onComplete: @escaping (User) -> Void) {
+        self._coordinator = State(
+            initialValue: OnboardingCoordinator(auth: auth, onComplete: onComplete)
+        )
     }
 
     var body: some View {
@@ -63,6 +66,8 @@ struct OnboardingView: View {
 }
 
 #Preview {
-    OnboardingView { _ in }
+    let services = ServiceContainer.preview()
+    return OnboardingView(auth: services.auth) { _ in }
+        .environment(services)
         .preferredColorScheme(.dark)
 }

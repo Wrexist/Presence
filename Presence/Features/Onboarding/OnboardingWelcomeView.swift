@@ -50,7 +50,7 @@ struct OnboardingWelcomeView: View {
 #Preview {
     ZStack {
         PresenceBackground()
-        OnboardingWelcomeView(coordinator: OnboardingCoordinator(onComplete: { _ in }))
+        OnboardingWelcomeView(coordinator: OnboardingCoordinator(auth: ServiceContainer.preview().auth, onComplete: { _ in }))
             .foregroundStyle(PresenceColors.presenceWhite)
     }
     .preferredColorScheme(.dark)

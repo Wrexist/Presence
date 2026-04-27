@@ -44,21 +44,24 @@
 ## 🔨 IN PROGRESS
 
 ### Operational chores (browser/dashboard work — not code)
-- [ ] Create Supabase project, copy URL + anon key into local `.env.development`
-- [ ] Run the SQL migrations from `CLAUDE.md` § "Database Schema" in Supabase SQL editor
+- [ ] Create Supabase project — **walkthrough now in `docs/supabase-setup.md`**
+- [ ] Run `Backend/supabase/migrations/0001_initial_schema.sql` in Supabase SQL editor
 - [ ] Create RevenueCat account + iOS app, copy SDK key into `.env.development`
+- [ ] Provision Railway project for backend — **decision + steps in `docs/backend-hosting.md`**
+- [ ] Add `RAILWAY_TOKEN` repo secret + `BACKEND_URL` repo variable for `.github/workflows/backend-deploy.yml`
 - [ ] Push branch and confirm `pr-checks.yml` goes green on macOS runner
 - [ ] (Optional, later) Apple Developer Program enrollment for TestFlight
 
 ### [TASK-003] Auth Flow
-- [ ] Supabase phone auth integration (Sprint 1 — swaps the `AuthService` stub)
+- [x] Supabase phone auth integration — `AuthService` now backed by `supabase-swift`
 - [x] OTP verification screen (glass design)
 - [x] Username + bio setup screen
 - [x] Luma onboarding animation trigger
 - [x] Seven-step onboarding: Welcome → Phone → OTP → Username → Bio → Privacy → Ready
 - [x] `GlassTextField` glass-styled input
 - [x] `OnboardingCoordinator` with async auth calls + error surfacing
-- [x] `AppCoordinator` routes to onboarding on first launch, persists completion in UserDefaults
+- [x] `AppCoordinator` boots via `AuthService.restoreSession()`, routes to onboarding on no session
+- [x] Keychain-backed session storage (`SupabaseSessionStorage` + `KeychainStore`)
 
 ---
 
@@ -67,39 +70,44 @@
 ### Sprint 1 — Core Loop
 - [ ] TASK-004: MapView with MapKit + Liquid Glass overlays (partial — real `Map{}` + annotations done; Liquid Glass on controls inherits from system)
 - [x] TASK-005: LocationService (CoreLocation wrapper) — `Services/LocationService.swift`
-- [ ] TASK-006: PresenceService (toggle on/off, 3h expiry)
-- [ ] TASK-007: Supabase PostGIS integration (store/query presences)
-- [ ] TASK-008: WebSocket service (real-time dot updates on map)
+- [x] TASK-005a: BackendClient (URLSession actor with retries + typed errors) — `Data/BackendClient.swift`
+- [x] TASK-006: PresenceService (toggle on/off, 3h expiry) — `Services/PresenceService.swift`
+- [x] TASK-007: Supabase PostGIS integration (store/query presences) — `Backend/src/routes/presence.ts` + `0002_nearby_presences_function.sql`
+- [x] TASK-008: WebSocket service (real-time dot updates on map) — backend geohash rooms + JWT handshake auth (B5); iOS `SocketService` + `MapViewModel` merging REST hydrate with socket events (B6)
 - [x] TASK-009: PresenceDotView (glowing marker on map)
-- [x] TASK-010: "Go Present" button (main CTA, glass pill)
-- [ ] TASK-011: Luma component + idle animation (Lottie — currently pure SwiftUI)
+- [x] TASK-010: "Go Present" button (main CTA, glass pill) — wired to `PresenceService.activate/deactivate` + 3h countdown chip
+- [x] TASK-011: Luma component + idle animation — `LumaView` is now Lottie-first with pure-SwiftUI fallback (`LumaPureView`); designer assets land under `Presence/Resources/Luma/` per the README spec
 
 ### Sprint 2 — Wave System
-- [ ] TASK-012: Tap-a-dot → wave preview sheet
-- [ ] TASK-013: Claude API icebreaker generation (backend)
-- [ ] TASK-014: WaveView — show icebreaker + wave button
-- [ ] TASK-015: Wave notification (push, Luma inline)
-- [ ] TASK-016: Wave response flow (accept/ignore)
-- [ ] TASK-017: 10-minute chat window (ChatView with countdown)
-- [ ] TASK-018: Connection recording + Luma celebration
+- [x] TASK-012: Tap-a-dot → wave preview sheet — `WaveComposeView` (sender side), wired off `HomeView` dot annotations
+- [x] TASK-013: Claude API icebreaker generation — backend route + iOS request flow (`/api/icebreaker` now JWT-authed)
+- [x] TASK-014: WaveView — `WaveReceivedView` now driven by the live `Wave` model + `WavesViewModel`
+- [x] TASK-015: Wave notification — backend push stub + iOS `NotificationService` + `AppDelegate` deep-link routing (real APNs send deferred to E6)
+- [x] TASK-016: Wave response flow (accept/decline) — backend `POST /api/waves/:id/respond` with mutual detection + connection insert
+- [x] TASK-017: 10-minute chat window — `ChatView` + `ChatViewModel` + `chat_rooms` / `chat_messages` migration; server enforces ends_at
+- [x] TASK-018: Connection recording + Luma celebration — `CelebrationView` triggered globally on `wave_mutual`; milestone copy at 1/5/10/25
 
 ### Sprint 3 — Monetization & Polish
-- [ ] TASK-019: RevenueCat integration
-- [ ] TASK-020: Paywall screen (Presence+)
-- [ ] TASK-021: Free tier enforcement (3 presences/week)
-- [ ] TASK-022: Profile screen + connection history
-- [ ] TASK-023: Block/report flow
-- [ ] TASK-024: Privacy screen + data export
-- [ ] TASK-025: Settings screen
-- [ ] TASK-026: Luma full state machine + all animations
+- [x] TASK-019: RevenueCat integration — `SubscriptionService` (D1)
+- [x] TASK-020: Paywall screen (Presence+) — `Features/Paywall/PaywallView` (D2)
+- [x] TASK-021: Free tier enforcement (3 presences/week) — server-side ISO-week count returns 402; client routes to paywall (D3)
+- [x] TASK-022: Profile screen + connection history — `ProfileViewModel`, edit username/bio, weekly chip for free users, journey 7-day chart wired to `/api/users/me/journey` (D4)
+- [x] TASK-023: Block/report flow — `/api/blocks` + `/api/reports` + `SafetySheet` reachable from compose / received / chat in ≤2 taps (D6)
+- [x] TASK-024: Privacy screen + data export — `PrivacyView` with blocked-user list + JSON share-sheet export of `/api/users/me/export` (D5)
+- [x] TASK-025: Settings screen — `SettingsView` with subscription status, sign-out + delete-account confirms (D5)
+- [x] TASK-026: Luma full state machine — `LumaCoordinator` (D7) drives the ambient Luma corner on `HomeView`; explicit-state Lumas (onboarding, paywall, celebration, chat) stay inline
 
 ### Sprint 4 — Beta
-- [ ] TASK-027: App Store Connect setup
-- [ ] TASK-028: TestFlight distribution
-- [ ] TASK-029: Analytics (PostHog)
-- [ ] TASK-030: Crash reporting (Sentry)
-- [ ] TASK-031: ASO — screenshots, description, keywords
-- [ ] TASK-032: Venue partner B2B backend
+- [x] TASK-027: App Store Connect setup — submission pack drafted in `docs/app-store.md` (E4)
+- [x] TASK-028: TestFlight distribution — runbook in `docs/testflight-runbook.md` (E6)
+- [x] TASK-029: Analytics (PostHog) — `AnalyticsService` actor with typed events; identify on `.main`, reset on `.onboarding`; events fire from onboarding/presence/wave/paywall surfaces (E2)
+- [x] TASK-030: Crash reporting (Sentry) — iOS `CrashReportingService` (no screenshots/view-hierarchy/IP); Node `sentry.ts` with PII scrubbing + `/debug-sentry` (E3)
+- [x] TASK-031: ASO — screenshots specs + description + keywords + age rating in `docs/app-store.md` (E4)
+- [x] TASK-031a: Privacy + Terms drafts — `legal/privacy.md` + `legal/terms.md` (E5)
+- [ ] TASK-032: Venue partner B2B backend — design spec'd in `docs/venue-partners.md` (F.3); implementation post-launch (Month 2+)
+- [ ] TASK-033: Group Presence — design spec'd in `docs/group-presence.md` (F.1); implementation Month 3-4
+- [ ] TASK-034: iOS Widget — spec'd in `docs/widget-spec.md` (F.2); implementation Month 3
+- [ ] TASK-035: Android strategy — tradeoff doc in `docs/android-strategy.md` (F.4); decision: native Kotlin + Material You at 50k MAU
 
 ---
 
