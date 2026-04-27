@@ -64,7 +64,7 @@ struct BackendClientTests {
             let _: Venue = try await client.get(.health)
         } catch let error as BackendError {
             captured = error
-        }
+        } catch {}
         guard case let .freeLimitReached(used, resetsAt) = captured else {
             Issue.record("Expected freeLimitReached, got \(String(describing: captured))")
             return
@@ -89,7 +89,7 @@ struct BackendClientTests {
             let _: Venue = try await client.get(.health)
         } catch let error as BackendError {
             captured = error
-        }
+        } catch {}
         guard case let .rateLimited(retryAfter) = captured else {
             Issue.record("Expected rateLimited, got \(String(describing: captured))")
             return
