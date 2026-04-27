@@ -11,14 +11,15 @@ import { config, featureFlags } from "./config.js";
 let initialized = false;
 
 export function initSentry(): void {
-  if (initialized || !featureFlags.sentryEnabled) return;
+  if (initialized || !featureFlags.sentryEnabled || !config.SENTRY_DSN) return;
   Sentry.init({
-    dsn: config.SENTRY_DSN!,
+    dsn: config.SENTRY_DSN,
     environment: config.NODE_ENV,
     tracesSampleRate: config.SENTRY_TRACES_SAMPLE_RATE,
     // Don't ship request bodies wholesale — scrub PII first.
     beforeSend(event) {
-      return scrubEvent(event);
+      scrubEvent(event);
+      return event;
     },
     beforeBreadcrumb(breadcrumb) {
       // Drop any breadcrumb whose data carries a phone or bio.
@@ -49,29 +50,23 @@ export function captureError(err: unknown, context?: Record<string, unknown>): v
 
 // MARK: - Scrubbing
 
-interface SentryEventLike {
-  request?: {
-    data?: unknown;
-    headers?: Record<string, unknown>;
-    query_string?: string;
-  };
-  user?: { ip_address?: string };
-}
-
-function scrubEvent<T extends SentryEventLike>(event: T): T {
-  const reqRecord = (event.request ?? {}) as { data?: unknown; headers?: Record<string, unknown> };
-  if (reqRecord.data && typeof reqRecord.data === "object") {
-    reqRecord.data = redactPII(reqRecord.data as Record<string, unknown>);
+/// Mutates the event in place to remove PII before it ships to Sentry.
+/// We type the event loosely (Record<string, unknown>) rather than against
+/// the SDK's strict ErrorEvent so future SDK type drift doesn't break this.
+function scrubEvent(event: Sentry.ErrorEvent): void {
+  const req = event.request as Record<string, unknown> | undefined;
+  if (req && typeof req.data === "object" && req.data !== null) {
+    req.data = redactPII(req.data as Record<string, unknown>);
   }
   // Drop the IP — we don't need it and most jurisdictions treat it as PII.
   if (event.user) {
     event.user.ip_address = undefined;
   }
   // Authorization header carries the JWT — strip it.
-  if (reqRecord.headers && "authorization" in reqRecord.headers) {
-    reqRecord.headers.authorization = "[redacted]";
+  const headers = req?.headers as Record<string, unknown> | undefined;
+  if (headers && "authorization" in headers) {
+    headers.authorization = "[redacted]";
   }
-  return event;
 }
 
 const REDACT_KEYS = new Set(["phone", "bio", "token", "password", "icebreaker", "body"]);

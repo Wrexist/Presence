@@ -253,8 +253,7 @@ struct SafetySheet: View {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            struct R: Decodable, Sendable { let ok: Bool? }
-            let _: R = try await services.backend.send(
+            let _: BlockResponse = try await services.backend.send(
                 .block(),
                 body: BlockRequest(blockedId: target.userId)
             )
@@ -279,15 +278,20 @@ struct SafetySheet: View {
             detail: trimmed.isEmpty ? nil : trimmed
         )
         do {
-            struct R: Decodable, Sendable {
-                let ok: Bool
-                let autoBlocked: Bool
-            }
-            let _: R = try await services.backend.send(.report(), body: body)
+            let _: ReportResponse = try await services.backend.send(.report(), body: body)
             onComplete(.reported)
             dismiss()
         } catch {
             errorMessage = "Couldn't send report. Try again?"
         }
     }
+}
+
+private struct BlockResponse: Decodable, Sendable {
+    let ok: Bool?
+}
+
+private struct ReportResponse: Decodable, Sendable {
+    let ok: Bool
+    let autoBlocked: Bool
 }

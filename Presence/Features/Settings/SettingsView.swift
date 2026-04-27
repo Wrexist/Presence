@@ -155,9 +155,8 @@ struct SettingsView: View {
     }
 
     private var subscriptionLine: String {
-        if let expiry = services.subscription.state.expiresAt
-            ?? profile?.plusExpiresAt
-        {
+        let expiry = services.subscription.state.expiresAt ?? profile?.plusExpiresAt
+        if let expiry {
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             return "Renews \(formatter.string(from: expiry))"

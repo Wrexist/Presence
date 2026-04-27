@@ -29,10 +29,12 @@ describe("geohashOf", () => {
 
 describe("adjacentGeohash", () => {
   it("matches well-known reference values for 'gbsuv'", () => {
-    // Reference: https://www.movable-type.co.uk/scripts/geohash.html
-    expect(adjacentGeohash("gbsuv", "n")).toBe("gbsuy");
+    // Reference values computed against the standard geohash neighbor
+    // tables (Movable Type variant). "gbsuv" has odd length, so N + E
+    // each cross a parent boundary; S + W stay within "gbsu*".
+    expect(adjacentGeohash("gbsuv", "n")).toBe("gbsvj");
     expect(adjacentGeohash("gbsuv", "s")).toBe("gbsut");
-    expect(adjacentGeohash("gbsuv", "e")).toBe("gbsvj");
+    expect(adjacentGeohash("gbsuv", "e")).toBe("gbsuy");
     expect(adjacentGeohash("gbsuv", "w")).toBe("gbsuu");
   });
 

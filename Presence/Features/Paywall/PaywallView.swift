@@ -246,8 +246,12 @@ struct PaywallView: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 16) {
-                Link("Terms", destination: URL(string: "https://app.presence.ios/terms")!)
-                Link("Privacy", destination: URL(string: "https://app.presence.ios/privacy")!)
+                if let termsURL = URL(string: "https://app.presence.ios/terms") {
+                    Link("Terms", destination: termsURL)
+                }
+                if let privacyURL = URL(string: "https://app.presence.ios/privacy") {
+                    Link("Privacy", destination: privacyURL)
+                }
             }
             .font(Typography.footnote)
             .foregroundStyle(PresenceColors.presenceWhite.opacity(GlassTokens.Opacity.hint))

@@ -90,16 +90,17 @@ final class CrashReportingService {
 
     private func label(for error: BackendError) -> String {
         switch error {
-        case .unauthorized:                          return "unauthorized"
-        case .forbidden:                             return "forbidden"
-        case .notFound:                              return "not_found"
-        case .rateLimited:                           return "rate_limited"
-        case .freeLimitReached:                      return "free_limit"
-        case .server(let status, _):                 return "server_\(status)"
-        case .network(let code) where code != nil:   return "network_\(code!.rawValue)"
-        case .network:                               return "network"
-        case .decode:                                return "decode"
-        case .invalidRequest:                        return "invalid_request"
+        case .unauthorized:                  return "unauthorized"
+        case .forbidden:                     return "forbidden"
+        case .notFound:                      return "not_found"
+        case .rateLimited:                   return "rate_limited"
+        case .freeLimitReached:              return "free_limit"
+        case .server(let status, _):         return "server_\(status)"
+        case .network(let code):
+            if let code { return "network_\(code.rawValue)" }
+            return "network"
+        case .decode:                        return "decode"
+        case .invalidRequest:                return "invalid_request"
         }
     }
 
