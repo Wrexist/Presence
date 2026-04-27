@@ -20,20 +20,32 @@ enum Config {
     /// can construct without crashing. Any real network call will fail
     /// against these hosts — the failure surfaces at the BackendClient /
     /// SupabaseClient call site, not at launch.
-    private static let placeholderHTTPS = "https://unconfigured.local"
+    private static let placeholderURL: URL = {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "unconfigured.local"
+        // The chained fallback is unreachable in practice — URLComponents
+        // with a valid scheme + host always produces a URL — but it lets
+        // the SwiftLint --strict force-unwrap rule stay clean.
+        return components.url ?? URL(filePath: "/unconfigured")
+    }()
     private static let placeholderKey = ""
 
     static let supabaseURL: URL = {
-        let raw = readValue(for: "SUPABASE_URL") ?? placeholderHTTPS
-        return URL(string: raw) ?? URL(string: placeholderHTTPS)!
+        if let raw = readValue(for: "SUPABASE_URL"), let url = URL(string: raw) {
+            return url
+        }
+        return placeholderURL
     }()
 
     static let supabaseAnonKey: String =
         readValue(for: "SUPABASE_ANON_KEY") ?? placeholderKey
 
     static let backendURL: URL = {
-        let raw = readValue(for: "BACKEND_URL") ?? placeholderHTTPS
-        return URL(string: raw) ?? URL(string: placeholderHTTPS)!
+        if let raw = readValue(for: "BACKEND_URL"), let url = URL(string: raw) {
+            return url
+        }
+        return placeholderURL
     }()
 
     static let revenueCatAPIKey: String = readValue(for: "REVENUECAT_API_KEY") ?? ""
