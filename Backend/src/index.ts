@@ -9,6 +9,7 @@ import pino from "pino";
 import { createApp } from "./app.js";
 import { config, featureFlags } from "./config.js";
 import { initSentry } from "./sentry.js";
+import { closeApns } from "./services/apns.js";
 import { setIO } from "./services/socketHub.js";
 import { attachWebSocket } from "./websocket/index.js";
 
@@ -29,7 +30,8 @@ http.listen(config.PORT, () => {
       port: config.PORT,
       env: config.NODE_ENV,
       supabase: featureFlags.supabaseEnabled,
-      anthropic: featureFlags.anthropicEnabled
+      anthropic: featureFlags.anthropicEnabled,
+      apns: featureFlags.apnsEnabled
     },
     "presence-backend listening"
   );
@@ -38,6 +40,7 @@ http.listen(config.PORT, () => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     logger.info({ signal }, "shutting down");
+    closeApns();
     http.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 5000).unref();
   });

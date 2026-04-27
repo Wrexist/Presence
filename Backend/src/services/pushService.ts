@@ -1,17 +1,19 @@
 //  Presence backend
 //  pushService.ts
-//  Sends a push to one user's registered device tokens. Real APNs
-//  delivery is gated behind APNS_* env vars — when they're missing
-//  (most local dev, CI), the service no-ops and logs at debug level so
-//  the wave flow still completes end-to-end.
+//  Sends a push to one user's registered device tokens via the real APNs
+//  HTTP/2 client in apns.ts. No-ops cleanly when APNS_* env vars are
+//  unset (CI, local dev) — the wave flow's primary delivery path is
+//  the socket fan-out, push is the fallback for backgrounded apps.
 //
-//  Real implementation lands in the TestFlight session (E6) — at that
-//  point this file gains the http2 request to api.push.apple.com plus
-//  a JWT signed with ES256. The persistence + broadcast paths in
-//  routes/waves.ts don't need to change.
+//  On 410 Unregistered the matching device_tokens row is deleted so the
+//  next push to the same user doesn't try the dead token again. Other
+//  failures are logged and discarded — the wave still succeeded as far
+//  as the route is concerned.
 
 import type { Logger } from "pino";
+import { featureFlags } from "../config.js";
 import { getSupabase } from "./supabase.js";
+import { sendApns, type ApnsEnvironment } from "./apns.js";
 
 export interface PushPayload {
   /// `aps.alert.title`
@@ -23,18 +25,18 @@ export interface PushPayload {
 }
 
 export interface PushOutcome {
-  /// How many tokens the request was sent to (or queued for). 0 if APNs
-  /// is not configured.
+  /// How many tokens were successfully delivered to (200 from APNs).
+  /// 0 if APNs is not configured.
   sent: number;
   /// True only when at least one delivery succeeded.
   ok: boolean;
 }
 
-const apnsEnabled =
-  Boolean(process.env.APNS_AUTH_KEY) &&
-  Boolean(process.env.APNS_KEY_ID) &&
-  Boolean(process.env.APNS_TEAM_ID) &&
-  Boolean(process.env.APNS_TOPIC);
+interface DeviceTokenRow {
+  token: string;
+  platform: string;
+  environment: string;
+}
 
 export async function sendPushToUser(
   receiverId: string,
@@ -54,16 +56,10 @@ export async function sendPushToUser(
     return { sent: 0, ok: false };
   }
 
-  const tokens = (data ?? []) as Array<{
-    token: string;
-    platform: string;
-    environment: string;
-  }>;
+  const tokens = (data ?? []) as DeviceTokenRow[];
   if (tokens.length === 0) return { sent: 0, ok: false };
 
-  if (!apnsEnabled) {
-    // Best-effort visibility for the dev. Don't fail the wave on this —
-    // socket fan-out is the primary delivery path.
+  if (!featureFlags.apnsEnabled) {
     logger.debug(
       { receiverId, tokens: tokens.length, payload: payload.title },
       "apns disabled, skipping push"
@@ -71,16 +67,46 @@ export async function sendPushToUser(
     return { sent: 0, ok: false };
   }
 
-  // TODO(E6): real APNs HTTP/2 send via node:http2 + ES256-signed JWT.
-  // The send loop should:
-  //   - open a single http2 session to api.push.apple.com
-  //   - per token: POST /3/device/<token> with apns-topic + apns-priority
-  //   - on 410 Unregistered, delete the token row
-  //   - on 200 OK, bump last_seen_at
-  // Until then we count tokens as "sent" so the route reports useful telemetry.
-  logger.info(
-    { receiverId, tokens: tokens.length, title: payload.title },
-    "push send (apns-stub) — would deliver"
-  );
-  return { sent: tokens.length, ok: true };
+  let delivered = 0;
+
+  // Send sequentially. Apple recommends parallelism within a single
+  // HTTP/2 session, but the volume of tokens per user is tiny (1-3
+  // typically) so the overhead of parallelism isn't worth the extra
+  // error-handling state. Revisit if usage grows.
+  for (const row of tokens) {
+    if (row.platform !== "ios") continue;
+    const env: ApnsEnvironment = row.environment === "production" ? "production" : "sandbox";
+    const result = await sendApns(
+      {
+        token: row.token,
+        environment: env,
+        alert: { title: payload.title, body: payload.body },
+        userInfo: payload.userInfo,
+        priority: 10
+      },
+      logger
+    );
+
+    if (result.status === "ok") {
+      delivered++;
+      // Bump last_seen_at so we know this token is still alive. Best
+      // effort — failures here don't affect the user.
+      await supabase
+        .from("device_tokens")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("token", row.token);
+    } else if (result.status === "unregistered") {
+      // Token's gone. Drop the row so the next push doesn't retry.
+      await supabase.from("device_tokens").delete().eq("token", row.token);
+      logger.info({ receiverId }, "apns unregistered — token removed");
+    } else if (result.status === "bad_token") {
+      // Bad shape, not transient — same outcome as unregistered.
+      await supabase.from("device_tokens").delete().eq("token", row.token);
+      logger.warn({ receiverId }, "apns bad_token — token removed");
+    } else {
+      logger.warn({ result, receiverId }, "apns send failed");
+    }
+  }
+
+  return { sent: delivered, ok: delivered > 0 };
 }

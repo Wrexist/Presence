@@ -19,6 +19,18 @@ const schema = z.object({
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
+  // Apple Push Notification service. The four APNS_* env vars are all
+  // required together for a real send; missing any disables push and
+  // pushService falls back to a no-op log path.
+  APNS_AUTH_KEY: z.string().optional(),       // raw .p8 PEM contents (multiline)
+  APNS_KEY_ID: z.string().optional(),         // 10-char ASCII key id from Apple Developer
+  APNS_TEAM_ID: z.string().optional(),        // 10-char team id
+  APNS_TOPIC: z.string().optional(),          // bundle id, e.g. app.presence.ios
+  APNS_PRODUCTION: z
+    .string()
+    .default("false")
+    .transform((s) => s === "true"),
+
   CORS_ORIGINS: z
     .string()
     .default("")
@@ -54,5 +66,11 @@ export const config = parsed.data;
 export const featureFlags = {
   supabaseEnabled: Boolean(config.SUPABASE_URL && config.SUPABASE_SERVICE_ROLE_KEY),
   anthropicEnabled: Boolean(config.ANTHROPIC_API_KEY),
-  sentryEnabled: Boolean(config.SENTRY_DSN)
+  sentryEnabled: Boolean(config.SENTRY_DSN),
+  apnsEnabled: Boolean(
+    config.APNS_AUTH_KEY &&
+      config.APNS_KEY_ID &&
+      config.APNS_TEAM_ID &&
+      config.APNS_TOPIC
+  )
 };

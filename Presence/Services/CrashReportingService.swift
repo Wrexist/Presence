@@ -52,10 +52,11 @@ final class CrashReportingService {
     }
 
     /// Identify the current user. Only the Supabase id — no phone, no
-    /// username, no bio.
+    /// username, no bio. The `Sentry.` qualifier disambiguates Sentry's
+    /// User class from our own Models/User.swift type.
     func identify(userId: UUID) {
         guard isConfigured else { return }
-        let user = User()
+        let user = Sentry.User()
         user.userId = userId.uuidString
         SentrySDK.setUser(user)
     }
@@ -69,7 +70,7 @@ final class CrashReportingService {
     /// at every catch site so we have context when crashes land.
     func breadcrumb(error: BackendError, location: String) {
         guard isConfigured else { return }
-        let crumb = Breadcrumb()
+        let crumb = Sentry.Breadcrumb()
         crumb.category = "backend"
         crumb.level = .warning
         crumb.message = "\(location): \(label(for: error))"
