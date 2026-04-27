@@ -51,10 +51,12 @@ final class ProfileViewModel {
     func refreshAll() async {
         isLoading = true
         defer { isLoading = false }
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { @MainActor [weak self] in await self?.refreshProfile() }
-            group.addTask { @MainActor [weak self] in await self?.refreshJourney() }
-        }
+        // async let runs both refreshes in parallel without the
+        // sending-closure friction TaskGroup.addTask hits when capturing
+        // main-actor-isolated `self` under Swift 6 strict concurrency.
+        async let profile: Void = refreshProfile()
+        async let journey: Void = refreshJourney()
+        _ = await (profile, journey)
     }
 
     // MARK: - Edit

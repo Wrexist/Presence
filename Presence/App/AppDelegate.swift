@@ -65,10 +65,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let waveIdString = userInfo["waveId"] as? String
         let waveId = waveIdString.flatMap(UUID.init(uuidString:))
 
+        // Dispatch the deep-link work to the main actor without dragging
+        // `completionHandler` across the boundary — Swift 6 strict refuses
+        // to send a non-Sendable closure into an isolated Task. Apple just
+        // needs us to call completionHandler before the system reclaims
+        // the call; right after scheduling the Task is fine.
         Task { @MainActor [weak self] in
             self?.handleNotificationTap(type: type, waveId: waveId)
-            completionHandler()
         }
+        completionHandler()
     }
 
     private func handleNotificationTap(type: String?, waveId: UUID?) {
